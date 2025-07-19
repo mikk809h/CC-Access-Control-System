@@ -59,6 +59,12 @@ if periphemu then
     end
 end
 
+
+term.setBackgroundColor(colors.black)
+term.setTextColor(colors.white)
+term.clear()
+term.setCursorPos(1, 1)
+
 local paths = {
     ["airlock"] = "airlock/startup.lua",
     ["control-server"] = "control-server/startup.lua",
@@ -129,8 +135,10 @@ for component, path in pairs(paths) do
                 end
                 startComponent(component)
             end
-        elseif lastComponentRun and lastComponentRun == component then
-            startComponent(component)
+        elseif lastComponentRun then
+            if lastComponentRun == component then
+                startComponent(component)
+            end
         else
             print("Starting component: " .. component)
             local file = fs.open(".lastComponent", "w")
