@@ -1,5 +1,5 @@
 local Screens = {}
-local C = require("shared.config")
+local C = require("airlock.airlock").config
 local log = require("core.log")
 local debug = require("core.debug")
 
@@ -48,7 +48,7 @@ function Screens.updateById(screenId, ctx)
                 local success, err = pcall(component.screen.update, component.screen, ctx)
                 if not success then
                     log.error("Error updating screen: " ..
-                    component.group .. "." .. component.name .. " - " .. tostring(err))
+                        component.group .. "." .. component.name .. " - " .. tostring(err))
                 end
             else
                 log.warn("Screen module missing update(): " .. component.group .. "." .. component.name)

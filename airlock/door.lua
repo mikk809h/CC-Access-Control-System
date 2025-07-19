@@ -10,7 +10,7 @@ local state = {
     current = nil
 }
 
-local C = require("shared.config")
+local C = require("airlock.airlock").config
 local Components = require("core.components")
 local log = require("core.log")
 local Status = require("airlock.state")

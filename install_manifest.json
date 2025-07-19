@@ -1,10 +1,11 @@
 {
     "versions": {
         "installer": "0.0.2",
-        "system": "0.1.0",
-        "core": "0.1.0",
-        "airlock": "0.1.0",
-        "control-server": "0.0.2"
+        "system": "0.1.1",
+        "core": "0.1.1",
+        "airlock": "0.1.1",
+        "control-server": "0.0.2",
+        "shared": "0.0.1"
     },
     "files": {
         "system": [
@@ -41,15 +42,16 @@
         "core": [
             "core/audio.lua",
             "core/components.lua",
+            "core/constants.lua",
             "core/debug.lua",
             "core/helpers.lua",
             "core/init.lua",
             "core/log.lua",
+            "core/ports.lua",
             "core/util.lua"
         ],
         "shared": [
-            "shared/config.lua",
-            "shared/ports.lua"
+            "shared/config.lua"
         ]
     },
     "depends": {
@@ -59,10 +61,10 @@
         ]
     },
     "sizes": {
-        "system": 12919,
-        "airlock": 43555,
+        "system": 13073,
+        "airlock": 43433,
         "control-server": 304194,
-        "core": 28096,
-        "shared": 1068
+        "core": 28600,
+        "shared": 802
     }
 }

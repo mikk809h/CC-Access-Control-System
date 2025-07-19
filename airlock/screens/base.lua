@@ -1,4 +1,4 @@
-local C = require("shared.config")
+local C = require("airlock.airlock").config
 local wrap = require("core.components").getWrap
 local log = require("core.log")
 

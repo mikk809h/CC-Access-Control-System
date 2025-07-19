@@ -1,5 +1,5 @@
 local log = require("core.log")
-local C = require("shared.config")
+local C = require("airlock.airlock").config
 local Audio = require("core.audio")
 local Door = require("airlock.door")
 local screenHandler = require("airlock.screenHandler")

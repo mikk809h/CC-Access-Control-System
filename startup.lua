@@ -78,13 +78,19 @@ if fs.exists("installer.lua") then
     if inst then
         local hasUpdates, componentsOutdated = inst.hasUpdates()
         if hasUpdates then
-            print("Updates available, installing...")
-            if inst.update(componentsOutdated) then
-                print("Updates installed successfully.")
-                print("Restarting computer...")
-                os.reboot()
+            print("Updates available, Install?")
+            print("Type 'y' to install updates or anything else to skip.")
+            local sure = read()
+            if sure:lower() ~= "yes" and sure:lower() ~= "y" then
+                print("Skipping updates.")
             else
-                print("Failed to install updates.")
+                if inst.update(componentsOutdated) then
+                    print("Updates installed successfully.")
+                    print("Restarting computer...")
+                    os.reboot()
+                else
+                    print("Failed to install updates.")
+                end
             end
         else
             print("No updates available.")

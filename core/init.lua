@@ -1,18 +1,17 @@
 ---@module 'core.log'
-local log        = require("core.log")
+local log     = require("core.log")
 ---@module 'core.helpers'
-local helpers    = require("core.helpers")
----@module 'shared.config'
-local COMPONENTS = require("shared.config").COMPONENTS
+local helpers = require("core.helpers")
 
 ---@alias Peripheral table<string, function>
 
 ---@type table<string, Peripheral>
-local wrap       = {}
+local wrap    = {}
 
 --- Validates that all required components exist in the configuration.
 ---@param required table<string, string[]> Grouped component names to validate
-function ValidateComponents(required)
+---@param COMPONENTS table<string, table<string, string>> Grouped components with their locations
+function ValidateComponents(required, COMPONENTS)
     log.info({ colors.cyan, "Validating components..." })
     for group, components in pairs(required) do
         for _, name in ipairs(components) do
@@ -29,8 +28,9 @@ function ValidateComponents(required)
 end
 
 --- Wraps all peripherals defined in COMPONENTS.
+---@param COMPONENTS table<string, table<string, string>> Grouped components with their locations
 ---@return table<string, Peripheral> wrapped table of peripheral objects
-function WrapComponents()
+function WrapComponents(COMPONENTS)
     log.info({ colors.cyan, "Wrapping peripherals..." })
     for group, components in pairs(COMPONENTS) do
         for name, location in pairs(components) do

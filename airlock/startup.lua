@@ -29,15 +29,23 @@ end
 log.info("Initializing...")
 log.info("Version: 1")
 
+COMPONENTS = {
+    ENTRANCE = { DOOR = settings.get("components.entrance.door"), KEYCARD = settings.get("components.entrance.keycard"), SCREEN = settings.get("components.entrance.screen") },
+    EXIT = { DOOR = settings.get("components.exit.door") },
+    AIRLOCK = { KEYCARD = settings.get("components.airlock.keycard"), SCREEN = settings.get("components.airlock.screen") },
+    INFO = { SCREEN = settings.get("components.info.screen") },
+    OTHER = { SPEAKER = settings.get("components.other.speaker"), MODEM = settings.get("components.other.modem") },
+}
+
 Init.ValidateComponents({
     ENTRANCE = { "KEYCARD", "DOOR", "SCREEN" },
     EXIT = { "DOOR" },
     AIRLOCK = { "SCREEN", "KEYCARD" },
     INFO = { "SCREEN" },
     OTHER = { "SPEAKER", "MODEM" }
-})
+}, COMPONENTS)
 
-local wrapped = Init.WrapComponents()
+local wrapped = Init.WrapComponents(COMPONENTS)
 Components.SetWrapper(wrapped)
 
 ScreenHandler.init()

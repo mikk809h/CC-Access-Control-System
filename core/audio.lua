@@ -1,6 +1,6 @@
 local queue = {}
 local Components = require("core.components")
-local C = require("shared.config")
+local C = require("airlock.airlock").config
 local log = require("core.log")
 
 

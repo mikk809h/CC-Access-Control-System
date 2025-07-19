@@ -1,7 +1,7 @@
 local BaseScreen = require("airlock.screens.base")
 local Status = require("airlock.state")
 local log = require("core.log")
-local C = require("shared.config")
+local C = require("airlock.airlock").config
 local helpers = require("core.helpers")
 
 local screen = BaseScreen:new("AIRLOCK", "SCREEN")

@@ -1,7 +1,7 @@
 local log = require("core.log")
 local helpers = require("core.helpers")
 local debug = require("core.debug")
-local C = require("shared.config")
+local C = require("airlock.airlock").config
 
 ---@class ComponentWrapper
 ---@field [string] table  -- device table indexed by component names
@@ -16,7 +16,6 @@ function SetWrapper(tbl)
     log.info({ colors.cyan, "Wrapper set with " }, { colors.white, helpers.count(tbl) or "unknown" },
         { colors.cyan, " components." })
 end
-
 
 --- Call a method on a wrapped component
 ---@param component string
@@ -76,7 +75,6 @@ function getWrap(COMPONENTS, group, name)
     end
     return wrap[component]
 end
-
 
 --- Call a method on a component identified by group and name
 ---@param COMPONENTS table<string, table<string, string>>
