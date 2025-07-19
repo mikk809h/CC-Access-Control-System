@@ -1,7 +1,7 @@
 {
     "versions": {
         "installer": "0.0.2",
-        "system": "0.1.2",
+        "system": "0.1.3",
         "core": "0.1.2",
         "airlock": "0.1.2",
         "control-server": "0.0.2",
@@ -61,7 +61,7 @@
         ]
     },
     "sizes": {
-        "system": 13099,
+        "system": 13840,
         "airlock": 44062,
         "control-server": 304194,
         "core": 28703,
