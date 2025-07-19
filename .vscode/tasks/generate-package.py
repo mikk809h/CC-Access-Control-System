@@ -15,6 +15,7 @@ EXCLUDED_PATHS = {
     ".generate_package.py",
     "logs",
     ".settings",
+    ".install-cache",
 }
 
 def load_gitignore():

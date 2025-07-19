@@ -71,6 +71,25 @@ local function startComponent(component)
     end
 end
 
+-- Auto update
+if fs.exists("installer.lua") then
+    print("Running installer...")
+    local inst = require("installer")
+    if inst then
+        if inst.hasUpdates() then
+            print("Updates available, installing...")
+            if inst.installUpdates() then
+                print("Updates installed successfully.")
+                print("Restarting computer...")
+                os.reboot()
+            else
+                print("Failed to install updates.")
+            end
+        else
+            print("No updates available.")
+        end
+    end
+end
 for component, path in pairs(paths) do
     print("Checking for component: " .. component)
     if fs.exists(path) then

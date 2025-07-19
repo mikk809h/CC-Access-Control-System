@@ -3,7 +3,8 @@
         "installer": "0.1",
         "system": "0.1",
         "core": "0.1",
-        "airlock": "0.1"
+        "airlock": "0.1",
+        "control-server": "0.1"
     },
     "files": {
         "system": [
@@ -57,7 +58,7 @@
         ]
     },
     "sizes": {
-        "system": 6765,
+        "system": 9380,
         "airlock": 41765,
         "control-server": 304194,
         "core": 26402,
