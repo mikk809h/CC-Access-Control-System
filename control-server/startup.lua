@@ -585,7 +585,7 @@ local headerFrame = mainFrame:addFrame()
 headerFrame:addLabel()
     :setText("Gantoof Nuclear Power Plant")
     :setPosition(math.floor((headerFrame:getWidth() - #("Gantoof Nuclear Power Plant")) / 2), 2)
-    :setForeground(colors.orange)
+    :setForeground(colors.yellow)
 
 headerFrame:addLabel()
     :setText(TYPE_NAME)
