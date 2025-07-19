@@ -1,3 +1,17 @@
+---@alias SoundNote { [1]: string, [2]: number, [3]: number }
+---@alias SoundEntry (SoundNote | number)[]
+---@alias ComponentGroup { [string]: string }
+
+---@class Config
+---@field ID string
+---@field TYPE_NAME string
+---@field OPENING_DELAY number
+---@field AUTO_CLOSE_TIME number
+---@field AIRLOCK_DIRECTION '"IN"' | '"OUT"'
+---@field COMPONENTS table<string, ComponentGroup>
+---@field SOUNDS table<string, SoundEntry>
+
+---@type Config
 return {
     ID = "A1.Entrance",
     TYPE_NAME = "Airlock A1 Entrance",

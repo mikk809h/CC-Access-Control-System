@@ -1,13 +1,27 @@
 local log = require("core.log")
 local helpers = require("core.helpers")
+
+---@class ComponentWrapper
+---@field [string] table  -- device table indexed by component names
+
+---@type ComponentWrapper
 local wrap = {}
 
+
+--- Set the wrapper table for components
+---@param tbl ComponentWrapper
 function SetWrapper(tbl)
     wrap = tbl
     log.info({ colors.cyan, "Wrapper set with " }, { colors.white, helpers.count(tbl) or "unknown" },
         { colors.cyan, " components." })
 end
 
+--- Call a method on a wrapped component
+---@param component string
+---@param method string
+---@param ... any
+---@return boolean|nil success
+---@return any|nil result_or_error
 function useWrap(component, method, ...)
     local args = { ... }
     local device = wrap[component]
@@ -48,6 +62,14 @@ function getWrap(COMPONENTS, group, name)
     return wrap[component]
 end
 
+--- Call a method on a component identified by group and name
+---@param COMPONENTS table<string, table<string, string>>
+---@param group string
+---@param name string
+---@param method string
+---@param ... any
+---@return boolean|nil success
+---@return any|nil result_or_error
 function callComponent(COMPONENTS, group, name, method, ...)
     local component = COMPONENTS[group] and COMPONENTS[group][name]
     if not component then

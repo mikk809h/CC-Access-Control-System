@@ -1,8 +1,12 @@
 local log = require("core.log")
 
+---@class debug
 local debug = {}
 
-
+--- Recursively dumps a table to the log with indentation
+---@param tbl any The value to dump (usually a table)
+---@param indent number? Current indentation level (used internally)
+---@param maxDepth number? Maximum depth to recurse into nested tables
 function debug.dump(tbl, indent, maxDepth)
     if maxDepth and indent >= maxDepth then
         return "MAX_DEPTH"

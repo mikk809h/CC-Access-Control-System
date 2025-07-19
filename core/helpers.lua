@@ -2,9 +2,9 @@ local helpers = {}
 
 --- Counts elements in a table.
 -- If predicate is provided, counts only elements where predicate(value, key) returns true.
--- @param tbl table to count elements from
--- @param predicate optional function(value, key) -> boolean
--- @return number count of matching elements
+---@param tbl table<any, any> Table to count elements from
+---@param predicate? fun(value: any, key: any): boolean Optional function to filter counted elements
+---@return number count of matching elements
 function helpers.count(tbl, predicate)
     local cnt = 0
     if type(tbl) ~= "table" then return 0 end
@@ -22,6 +22,10 @@ function helpers.count(tbl, predicate)
     return cnt
 end
 
+--- Checks shallow equality of two tables (only first-level keys and values).
+---@param tbl1 table<any, any>
+---@param tbl2 table<any, any>
+---@return boolean
 function helpers.equals(tbl1, tbl2)
     if type(tbl1) ~= "table" or type(tbl2) ~= "table" then
         return false

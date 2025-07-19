@@ -1,3 +1,9 @@
+---@class Logger
+---@field debug fun(...): nil
+---@field info fun(...): nil
+---@field warn fun(...): nil
+---@field error fun(...): nil
+---@field critical fun(...): nil
 local log = {}
 
 local defaultColor = colors.lightGray
@@ -9,14 +15,17 @@ local levelColors = {
     CRITICAL = colors.orange,
 }
 
--- Returns current time as [HH:MM:SS]
+--- Returns current time as [HH:MM:SS]
+---@return string
 local function getTimestamp()
     local time = textutils.formatTime(os.time(), true)
     return time
 end
 
--- create the write helper function
-
+--- Write wrapped text to a target
+---@param target table monitor/terminal-like object
+---@param sText string|number
+---@return integer nLinesPrinted
 local function write(target, sText)
     assert(1, sText, "string", "number")
 
@@ -80,6 +89,10 @@ local function write(target, sText)
     return nLinesPrinted
 end
 
+--- Print values with tab separation and wrapping
+---@param target table
+---@param ... any
+---@return integer
 local function print(target, ...)
     local nLinesPrinted = 0
     local nLimit = select("#", ...)
@@ -94,7 +107,10 @@ local function print(target, ...)
     return nLinesPrinted
 end
 
--- Core printing function
+--- Core print function for colored log output
+---@param target table
+---@param level string
+---@param ... any
 local function coloredPrintToTarget(target, level, ...)
     -- if target width is too small, do not include timestamp
     local w, _ = target.getSize()
@@ -122,6 +138,9 @@ local function coloredPrintToTarget(target, level, ...)
     print(target)
 end
 
+--- Create a logger for a specific output device
+---@param target table
+---@return Logger
 local function makeLogger(target)
     local instance = {}
 
@@ -141,7 +160,9 @@ log.warn = function(...) coloredPrintToTarget(term, "WARN", ...) end
 log.error = function(...) coloredPrintToTarget(term, "ERROR", ...) end
 log.critical = function(...) coloredPrintToTarget(term, "CRITICAL", ...) end
 
--- Redirect logger to a different target (e.g., a monitor)
+--- Redirect logger to a different output target (e.g., monitor)
+---@param target table
+---@return Logger
 function log.redirect(target)
     if not target or type(target.write) ~= "function" then
         error("log.redirect requires a valid output component (e.g., monitor)")

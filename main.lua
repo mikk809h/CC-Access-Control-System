@@ -8,6 +8,9 @@ local Door = require("airlock.door")
 local EventHandler = require("airlock.eventHandler") -- require the new event handler
 local ScreenHandler = require("airlock.screenHandler")
 
+log.info("Initializing...")
+log.info("Version: 1")
+
 Init.ValidateComponents({
     ENTRANCE = { "KEYCARD", "DOOR", "SCREEN" },
     EXIT = { "DOOR" },
