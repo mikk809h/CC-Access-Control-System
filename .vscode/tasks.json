@@ -1,0 +1,13 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Update package.json",
+            "type": "shell",
+            "command": "python .generate-package.py",
+            "group": "build",
+            "problemMatcher": [],
+            "detail": "Auto-update package.json with all repo files (excluding .gitignore)"
+        }
+    ]
+}
