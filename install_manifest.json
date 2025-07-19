@@ -8,11 +8,13 @@
     "files": {
         "system": [
             "README.md",
+            "configure.lua",
             "initialize.lua",
             "installer.lua",
             "startup.lua"
         ],
         "airlock": [
+            "airlock/configure.lua",
             "airlock/door.lua",
             "airlock/eventHandler.lua",
             "airlock/events/onIdentityValidationResponse.lua",
@@ -40,7 +42,8 @@
             "core/debug.lua",
             "core/helpers.lua",
             "core/init.lua",
-            "core/log.lua"
+            "core/log.lua",
+            "core/util.lua"
         ],
         "shared": [
             "shared/config.lua",
@@ -54,10 +57,10 @@
         ]
     },
     "sizes": {
-        "system": 6158,
-        "airlock": 33524,
+        "system": 6765,
+        "airlock": 41765,
         "control-server": 304194,
-        "core": 15545,
+        "core": 26402,
         "shared": 1068
     }
 }

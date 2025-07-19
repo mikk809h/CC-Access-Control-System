@@ -61,7 +61,7 @@ end
 
 local paths = {
     ["airlock"] = "airlock/startup.lua",
-    -- ["control-server"] = "control-server/startup.lua",
+    ["control-server"] = "control-server/startup.lua",
 }
 
 local function startComponent(component)
