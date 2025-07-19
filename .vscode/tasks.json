@@ -16,9 +16,9 @@
             "type": "pickString",
             "description": "What kind of update is this?",
             "options": [
-                "major",
+                "revision",
                 "minor",
-                "revision"
+                "major"
             ],
             "default": "revision"
         }
