@@ -76,9 +76,10 @@ if fs.exists("installer.lua") then
     print("Running installer...")
     local inst = require("installer")
     if inst then
-        if inst.hasUpdates() then
+        local hasUpdates, componentsOutdated = inst.hasUpdates()
+        if hasUpdates then
             print("Updates available, installing...")
-            if inst.installUpdates() then
+            if inst.update(componentsOutdated) then
                 print("Updates installed successfully.")
                 print("Restarting computer...")
                 os.reboot()

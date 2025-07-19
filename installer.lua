@@ -119,7 +119,18 @@ end
 
 function installer.install(component)
     if not component then
-        error("No component specified for installation.")
+        error("No component(s) specified for installation.")
+        return false
+    end
+
+    local components = {}
+
+    if type(component) == "string" then
+        components = { component }
+    elseif type(component) == "table" then
+        components = component
+    else
+        error("Invalid component type passed to install()")
         return false
     end
 
@@ -129,7 +140,7 @@ function installer.install(component)
         return false
     end
 
-    local targets = { component }
+    local targets = components
     local fullList = resolveDependencies(remoteManifest, targets)
 
     fs.makeDir(installDir)
@@ -158,15 +169,20 @@ function installer.update(component)
 
     local localManifest = readLocalManifest()
     fs.makeDir(installDir)
-
     local targets = {}
-    if component then
-        targets = { component }
-    else
-        -- if no component specified, update all
+
+    if component == nil then
+        -- Update all
         for name in pairs(remoteManifest.files) do
             table.insert(targets, name)
         end
+    elseif type(component) == "string" then
+        targets = { component }
+    elseif type(component) == "table" then
+        targets = component
+    else
+        warn("Invalid component filter passed to update()")
+        return false
     end
 
     local fullList = resolveDependencies(remoteManifest, targets)
@@ -215,13 +231,15 @@ function installer.hasUpdates(component)
         return false
     end
 
+    local outdated = {}
+
     for _, name in ipairs(componentsToCheck) do
         if shouldUpdateComponent(localManifest, remoteManifest, name) then
-            return true
+            table.insert(outdated, name)
         end
     end
 
-    return false
+    return #outdated > 0, outdated
 end
 
 function installer.run(args)
