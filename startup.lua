@@ -89,6 +89,7 @@ if fs.exists("installer.lua") then
             print("No updates available.")
         end
     end
+    sleep(1.5)
 end
 for component, path in pairs(paths) do
     print("Checking for component: " .. component)

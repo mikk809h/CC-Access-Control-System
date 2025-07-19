@@ -4,10 +4,23 @@
         {
             "label": "Update package.json",
             "type": "shell",
-            "command": "python .vscode/tasks/generate-package.py",
+            "command": "python .vscode/tasks/generate-package.py --bump ${input:bumpType}",
             "group": "build",
             "problemMatcher": [],
             "detail": "Auto-update package.json with all repo files (excluding .gitignore)"
+        }
+    ],
+    "inputs": [
+        {
+            "id": "bumpType",
+            "type": "pickString",
+            "description": "What kind of update is this?",
+            "options": [
+                "major",
+                "minor",
+                "revision"
+            ],
+            "default": "revision"
         }
     ]
 }

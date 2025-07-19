@@ -2,7 +2,6 @@ local BaseScreen = require("airlock.screens.base")
 local Status = require("airlock.state")
 local log = require("core.log")
 local C = require("shared.config")
-local debug = require("core.debug")
 local helpers = require("core.helpers")
 
 local screen = BaseScreen:new("AIRLOCK", "SCREEN")
@@ -15,9 +14,7 @@ local prev = {
     __ctx_timestamp = nil,
 }
 
-
 --- override setup
-
 function screen:setup()
     if type(self.monitor) ~= "table" or not self.monitor.setCursorPos then
         error("Invalid call to BaseScreen:setup — 'self' is not a screen instance.")
