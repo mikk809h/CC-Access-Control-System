@@ -6,6 +6,7 @@ local Door = require("airlock.door")
 local Audio = require("core.audio")
 local Components = require("core.components")
 local ScreenHandler = require("airlock.screenHandler")
+local debug = require("core.debug")
 
 -- Keep a copy of the last applied state to detect changes
 local previous = {

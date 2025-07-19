@@ -72,7 +72,7 @@ local function startComponent(component)
 end
 
 -- Auto update
-if fs.exists("installer.lua") then
+if fs.exists("installer.lua") and not fs.exists(".dev") then
     print("Running installer...")
     local inst = require("installer")
     if inst then

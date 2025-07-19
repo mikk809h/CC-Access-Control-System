@@ -16,7 +16,8 @@ function ValidateComponents(required, COMPONENTS)
     for group, components in pairs(required) do
         for _, name in ipairs(components) do
             if not COMPONENTS[group] or not COMPONENTS[group][name] then
-                local errMsg = "Missing: " .. group .. "." .. name
+                local errMsg = "Missing: " .. group .. "." .. name .. " on location " ..
+                    (COMPONENTS[group] and COMPONENTS[group][name] or "unknown")
                 log.error({ colors.red, errMsg })
                 error(errMsg)
             else

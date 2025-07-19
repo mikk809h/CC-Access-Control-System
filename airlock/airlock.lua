@@ -1,12 +1,42 @@
-local util = require "core.util"
-local Airlock = {}
+local util     = require "core.util"
+local log      = require "core.log"
+local debug    = require "core.debug"
+local Airlock  = {}
 
-local config = {}
+local config   = {}
 
 Airlock.config = config
 
 function Airlock.load_config()
     if not settings.load("/.settings") then return false end
+    log.info("Loaded settings from /.settings")
+
+    config.COMPONENTS = {
+        ENTRANCE = {
+            DOOR = settings.get("component.entrance.door"),
+            KEYCARD = settings.get("component.entrance.keycard"),
+            SCREEN = settings.get("component.entrance.screen")
+        },
+        EXIT = {
+            DOOR = settings.get("component.exit.door")
+        },
+        AIRLOCK = {
+            KEYCARD = settings.get("component.airlock.keycard"),
+            SCREEN = settings.get("component.airlock.screen")
+        },
+        INFO = {
+            SCREEN = settings.get("component.info.screen")
+        },
+        OTHER = {
+            SPEAKER = settings.get("component.other.speaker"),
+            MODEM = settings.get("component.other.modem")
+        },
+    }
+
+    config.ID = settings.get("Identifier")
+    config.TYPE_NAME = settings.get("Name") or "Airlock Entrance"
+    config.OPENING_DELAY = settings.get("openingDelay") or 2.5
+    config.AUTO_CLOSE_TIME = settings.get("autoCloseTime") or 10
 
     return true
 end
