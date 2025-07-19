@@ -39,6 +39,27 @@ function Screens.init()
     log.info("Initialized " .. #Screens.__components .. " screen modules")
 end
 
+---@param screenId string|number
+---@param ctx table|nil
+function Screens.updateById(screenId, ctx)
+    for _, component in ipairs(Screens.__components) do
+        if component.screen.screenId == screenId then
+            if component.screen.update then
+                local success, err = pcall(component.screen.update, component.screen, ctx)
+                if not success then
+                    log.error("Error updating screen: " ..
+                    component.group .. "." .. component.name .. " - " .. tostring(err))
+                end
+            else
+                log.warn("Screen module missing update(): " .. component.group .. "." .. component.name)
+            end
+            return true
+        end
+    end
+    log.warn("No screen found with ID: " .. tostring(screenId))
+    return false
+end
+
 function Screens.updateGroup(screenGroup, ctx)
     for _, component in ipairs(Screens.__components) do
         if component.group == screenGroup then
