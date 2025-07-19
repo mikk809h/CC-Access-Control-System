@@ -166,7 +166,6 @@ function installer.install(component)
 end
 
 function installer.update(component)
-    info("Update: " .. (component or "all components"))
     local remoteManifest, err = fetchJSON(manifestURL)
     if not remoteManifest then
         error("Failed to fetch remote manifest: " .. (err or "unknown error"))
