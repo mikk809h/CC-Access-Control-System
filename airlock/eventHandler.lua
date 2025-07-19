@@ -3,11 +3,16 @@ local Ports = require("shared.ports")
 local C = require("shared.config")
 local Components = require("core.components")
 local screenHandler = require("airlock.screenHandler")
+local debug = require("core.debug")
+
 local EventHandler = {}
+
 
 -- Load event modules and map their main functions here:
 local eventModules = {
-    onKeyCardInserted = require("airlock.events.onKeyCardInserted").onKeyCardInserted,
+    onKeyCardInsertedAirlock = require("airlock.events.onKeyCardInsertedAirlock").onKeyCardInsertedAirlock,
+    onKeyCardInsertedEntrance = require("airlock.events.onKeyCardInsertedEntrance")
+        .onKeyCardInsertedEntrance,
     onIdentityValidationResponse = require("airlock.events.onIdentityValidationResponse").onIdentityValidationResponse,
     onStatus = require("airlock.events.onStatus").onStatus,
 }
@@ -47,9 +52,17 @@ function EventHandler.runEventLoop()
                 handle("onStatus", msg)
             end
         elseif eventName == "disk" then
-            handle("onKeyCardInserted")
+            log.debug("Disk event: ")
+            debug.dump(event)
+            if Components.isMatch(event[2], "AIRLOCK", "KEYCARD") then      -- Check if the disk is the keycard
+                handle("onKeyCardInsertedAirlock", event)
+            elseif Components.isMatch(event[2], "ENTRANCE", "KEYCARD") then -- Check if the disk is the entrance keycard
+                handle("onKeyCardInsertedEntrance", event)
+            else
+                log.warn("Unknown disk event for component: " .. tostring(event[2]))
+            end
         elseif eventName == "monitor_resize" then
-            screenHandler.update({
+            screenHandler.updateById(event[2], {
                 type = "event",
                 name = "monitor_resize",
                 monitor = event[2]
