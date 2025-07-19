@@ -58,6 +58,10 @@
         "airlock": [
             "system",
             "core"
+        ],
+        "control-server": [
+            "system",
+            "core"
         ]
     },
     "sizes": {
