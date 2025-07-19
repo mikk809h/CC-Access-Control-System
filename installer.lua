@@ -4,7 +4,7 @@ installer.keep_original_installer = false
 local installDir = "/.install-cache"
 local repoBranch = "main"
 local repoBase = "https://raw.githubusercontent.com/mikk809h/CC-Access-Control-System/" .. repoBranch .. "/"
-local manifestURL = repoBase .. "install_manifest.json"
+local manifestURL = repoBase .. "install_manifest.json?v=1"
 local localManifestPath = installDir .. "/install_manifest.json"
 
 --==[ Logging ]==--
