@@ -3,6 +3,10 @@ local Components = require("core.components")
 local C = require("shared.config")
 local log = require("core.log")
 
+
+--- Queue a sound to be played
+---@param sound SoundEnum The name of the sound to play
+---@return nil
 local function play(sound)
     table.insert(queue, sound)
     os.queueEvent("playSound")

@@ -7,6 +7,8 @@ local helpers = require("core.helpers")
 
 ---@type BaseScreen
 local screen = BaseScreen:new("INFO", "SCREEN")
+local ignoreNextResize = false
+
 
 ---@param self BaseScreen
 function screen:setup()
@@ -14,21 +16,26 @@ function screen:setup()
         error("Invalid call to BaseScreen:setup — 'self' is not a screen instance.")
     end
     self:super()
+    self.monitor.setTextScale(1)
 end
 
 ---@param self BaseScreen
 ---@param ctx table|nil
 function screen:update(ctx)
     if ctx and ctx.type == "event" and ctx.name == "monitor_resize" then
-        log.debug("Monitor resized, reinitializing screen")
-        self:setup()
+        if ignoreNextResize then
+            -- log.debug("Ignoring next resize event for info screen")
+            ignoreNextResize = false
+        else
+            log.debug("Monitor resized [info], reinitializing screen")
+            self:setup()
+            ignoreNextResize = true
+        end
     end
+    local w, h = self.monitor.getSize()
     if Status.lockdown then
         self:setColors(colors.white, colors.red)
         self:clear()
-        self.monitor.setTextScale(1)
-        self:clear()
-        local w, h = self.monitor.getSize()
 
         self:writeCentered(math.floor(h / 2) - 1, "LOCKDOWN ACTIVE", colors.white)
 
@@ -46,30 +53,19 @@ function screen:update(ctx)
     else
         self:setColors(colors.white, colors.green)
         self:clear()
-        self.monitor.setTextScale(1.5)
-        self:clear()
 
-        local w, h = self.monitor.getSize()
 
         self:writeCentered(2, "Gantoof", colors.red)
         self:writeCentered(3, " Nuclear Facility", colors.orange)
 
-        self:writeCentered(math.floor(h / 2) - 1, " Airlock")
-        self:writeCentered(math.floor(h / 2), " A1 Entrance")
-        self:writeCentered(math.floor(h / 2) + 2, (Status.online and "Online" or "Offline"))
+        self:writeCentered(math.floor(h / 2), " Airlock")
+        self:writeCentered(math.floor(h / 2) + 1, " A1 Entrance")
 
         self.monitor.setTextColor(colors.gray)
-        self.monitor.setCursorPos(2, h - 2)
-        self.monitor.write("Days since last")
+        self.monitor.setCursorPos(4, h - 2)
+        self.monitor.write("Days since last incident")
         self.monitor.setTextColor(colors.gray)
-        self.monitor.setCursorPos(2, h - 1)
-        self.monitor.write("incident: ")
-        local daysSinceLastIncident = Status.daysSinceLastIncident or 0
-        -- Write to right side of the screen
-        self.monitor.setCursorPos(w - #tostring(daysSinceLastIncident) - 2, h - 1)
-        self.monitor.setTextColor(daysSinceLastIncident > 8 and colors.green or
-            daysSinceLastIncident > 1 and colors.yellow or colors.red)
-        self.monitor.write(tostring(daysSinceLastIncident))
+        self:writeCentered(h - 1, " CLASSIFIED", colors.gray)
     end
 end
 

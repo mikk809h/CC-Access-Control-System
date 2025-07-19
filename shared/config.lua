@@ -30,6 +30,7 @@ return {
         DENIED = { { "bit", 1, 10 }, 0.15, { "bit", 1, 0 } },
         OFFLINE = { { "bit", 0.5, 1 } },
         ONLINE = { { "chime", 0.25, 2 } },
+        PING = { { "bit", 0.5, 24 } },
         LOCKDOWN = { { "bit", 1, 4 }, 0.2, { "bit", 1, 0 } },
         NO_IDENTITY = { { "bit", 1, 6 }, 0.2, { "bit", 1, 0 } },
         EMPTY_IDENTITY = { { "bit", 1, 8 }, 0.4, { "bit", 1, 5 }, 0.45, { "bit", 1, 3 } },

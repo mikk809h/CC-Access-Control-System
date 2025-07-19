@@ -17,7 +17,7 @@ end
 ---@param ctx table|nil
 function screen:update(ctx)
     if ctx and ctx.type == "event" and ctx.name == "monitor_resize" then
-        log.debug("Monitor resized, reinitializing screen")
+        log.debug("Monitor resized [entrance], reinitializing screen")
         self:setup()
     end
     local w, h = self.monitor.getSize()

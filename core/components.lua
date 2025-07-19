@@ -1,12 +1,13 @@
 local log = require("core.log")
 local helpers = require("core.helpers")
+local debug = require("core.debug")
+local C = require("shared.config")
 
 ---@class ComponentWrapper
 ---@field [string] table  -- device table indexed by component names
 
 ---@type ComponentWrapper
 local wrap = {}
-
 
 --- Set the wrapper table for components
 ---@param tbl ComponentWrapper
@@ -15,6 +16,7 @@ function SetWrapper(tbl)
     log.info({ colors.cyan, "Wrapper set with " }, { colors.white, helpers.count(tbl) or "unknown" },
         { colors.cyan, " components." })
 end
+
 
 --- Call a method on a wrapped component
 ---@param component string
@@ -52,6 +54,19 @@ function useWrap(component, method, ...)
     end
 end
 
+function isMatch(wrapId, group, name)
+    if not wrapId or not group or not name then
+        log.warn("Invalid arguments for isMatch: wrapId, group, and name are required.")
+        return false
+    end
+    local matchName = C.COMPONENTS[group] and C.COMPONENTS[group][name]
+    if not matchName then
+        log.warn("Component not found for ID: " .. tostring(wrapId))
+        return false
+    end
+    return matchName == wrapId
+end
+
 function getWrap(COMPONENTS, group, name)
     local component = COMPONENTS[group] and COMPONENTS[group][name]
     if not component then
@@ -61,6 +76,7 @@ function getWrap(COMPONENTS, group, name)
     end
     return wrap[component]
 end
+
 
 --- Call a method on a component identified by group and name
 ---@param COMPONENTS table<string, table<string, string>>
@@ -82,6 +98,7 @@ end
 
 return {
     SetWrapper = SetWrapper,
+    isMatch = isMatch,
     useWrap = useWrap,
     callComponent = callComponent,
     getWrap = getWrap

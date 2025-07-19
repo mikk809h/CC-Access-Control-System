@@ -6,7 +6,6 @@ local debug = require("core.debug")
 local helpers = require("core.helpers")
 
 local screen = BaseScreen:new("AIRLOCK", "SCREEN")
-
 local prev = {
     online = nil,
     lockdown = nil,
@@ -44,7 +43,7 @@ function screen:update(ctx)
     else
         if ctx.type == "event" then
             if ctx.name == "monitor_resize" then
-                log.debug("Monitor resized, reinitializing screen")
+                log.debug("Monitor resized [airlock], reinitializing screen")
                 prev.__ctx = nil
                 prev.__ctx_timestamp = nil
                 self:setup()
@@ -108,14 +107,16 @@ function screen:update(ctx)
     end
 
     if ctx then
-        self:writeCentered(cY + 5, "Key: " .. identifier, colors.lightGray)
+        if ctx.hasPresentedKeycardThisSession then
+            self:writeCentered(cY + 5, "Key: " .. identifier, colors.lightGray)
 
-        if ctx.validating then
-            self:writeCentered(cY + 6, "Validating...", colors.yellow)
-        elseif ctx.accessGranted then
-            self:writeCentered(cY + 6, "Access granted", colors.green)
-        else
-            self:writeCentered(cY + 6, "Access denied", colors.red)
+            if ctx.validating then
+                self:writeCentered(cY + 6, "Validating...", colors.yellow)
+            elseif ctx.accessGranted then
+                self:writeCentered(cY + 6, "Access granted", colors.green)
+            else
+                self:writeCentered(cY + 6, "Access denied", colors.red)
+            end
         end
     end
 end
