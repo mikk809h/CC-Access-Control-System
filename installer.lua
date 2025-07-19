@@ -1,6 +1,4 @@
 local installer = {}
-installer.keep_original_installer = false
-
 local installDir = "/.install-cache"
 local repoBranch = "main"
 local repoBase = "https://raw.githubusercontent.com/mikk809h/CC-Access-Control-System/" .. repoBranch .. "/"
@@ -38,9 +36,6 @@ end
 
 --==[ Filesystem ]==--
 local function writeFile(path, content)
-    if installer.keep_original_installer and path == "installer.lua" then
-        path = "__installer_remote.lua"
-    end
     fs.makeDir(fs.getDir(path))
     local f = fs.open(path, "w")
     if not f then return false, "Failed to open file " .. path end
