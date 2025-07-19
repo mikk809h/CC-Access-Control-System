@@ -105,7 +105,7 @@ local function downloadComponent(name, files)
 end
 
 local function shouldUpdateComponent(localManifest, remoteManifest, name)
-    info("Checking if '" .. name .. "' needs update")
+    info("Checking " .. name)
     if not localManifest or not localManifest.versions then
         info("No local manifest or versions found, updating")
         return true
@@ -113,7 +113,13 @@ local function shouldUpdateComponent(localManifest, remoteManifest, name)
 
     local localVer = localManifest.versions[name]
     local remoteVer = remoteManifest.versions[name]
-    info("  Local: " .. tostring(localVer) .. ", Remote: " .. tostring(remoteVer))
+    if localVer ~= remoteVer then
+        info("Component '" ..
+            name .. "' needs update (local: " .. tostring(localVer) .. ", remote: " .. tostring(remoteVer) .. ")")
+    else
+        info("Component '" ..
+            name .. "' is up to date (local: " .. tostring(localVer) .. ", remote: " .. tostring(remoteVer) .. ")")
+    end
     return localVer ~= remoteVer
 end
 
