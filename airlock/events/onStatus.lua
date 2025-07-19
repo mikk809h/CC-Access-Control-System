@@ -3,7 +3,7 @@ local C = require("shared.config")
 local Ports = require("shared.ports")
 local Status = require("airlock.state")
 local Door = require("airlock.door")
-local Sound = require("airlock.sound")
+local Audio = require("core.audio")
 local Components = require("core.components")
 local ScreenHandler = require("airlock.screenHandler")
 
@@ -44,11 +44,11 @@ local function onStatus(msg)
         if isNowLocked then
             log.warn("Lockdown active on this airlock")
             Door.setAirlockState("closed")
-            Sound.play("LOCKDOWN")
+            Audio.play("LOCKDOWN")
         else
             log.info("Lockdown cleared - airlock open")
             Door.setAirlockState("enter")
-            Sound.play("ONLINE")
+            Audio.play("ONLINE")
         end
     end
 

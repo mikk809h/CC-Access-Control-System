@@ -1,0 +1,63 @@
+{
+    "versions": {
+        "installer": "0.1",
+        "system": "0.1",
+        "core": "0.1",
+        "airlock": "0.1"
+    },
+    "files": {
+        "system": [
+            "initialize.lua",
+            "logs",
+            "startup.lua",
+            "updater.lua"
+        ],
+        "airlock": [
+            "airlock/door.lua",
+            "airlock/eventHandler.lua",
+            "airlock/events/onIdentityValidationResponse.lua",
+            "airlock/events/onKeyCardInserted.lua",
+            "airlock/events/onKeyCardInsertedAirlock.lua",
+            "airlock/events/onKeyCardInsertedEntrance.lua",
+            "airlock/events/onStatus.lua",
+            "airlock/screenHandler.lua",
+            "airlock/screens/airlock.lua",
+            "airlock/screens/base.lua",
+            "airlock/screens/entrance.lua",
+            "airlock/screens/info.lua",
+            "airlock/startup.lua",
+            "airlock/state.lua"
+        ],
+        "control-server": [
+            "control-server/basalt.lua",
+            "control-server/config.lua",
+            "control-server/shared.lua",
+            "control-server/startup.lua"
+        ],
+        "core": [
+            "core/audio.lua",
+            "core/components.lua",
+            "core/debug.lua",
+            "core/helpers.lua",
+            "core/init.lua",
+            "core/log.lua"
+        ],
+        "shared": [
+            "shared/config.lua",
+            "shared/ports.lua"
+        ]
+    },
+    "depends": {
+        "airlock": [
+            "system",
+            "core"
+        ]
+    },
+    "sizes": {
+        "system": 3865,
+        "airlock": 33187,
+        "control-server": 304175,
+        "core": 15545,
+        "shared": 1068
+    }
+}

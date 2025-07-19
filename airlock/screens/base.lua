@@ -175,7 +175,6 @@ end
 ---@param endY integer
 ---@param bgColor? number
 function BaseScreen:fillLines(startY, endY, bgColor)
-    local w = select(1, self.monitor.getSize())
     local prevBg = self.monitor.getBackgroundColor()
 
     if bgColor then self.monitor.setBackgroundColor(bgColor) end

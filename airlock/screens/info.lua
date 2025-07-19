@@ -37,16 +37,24 @@ function screen:update(ctx)
         self:setColors(colors.white, colors.red)
         self:clear()
 
-        self:writeCentered(math.floor(h / 2) - 1, "LOCKDOWN ACTIVE", colors.white)
+        self:writeCentered(2, "Gantoof", colors.white)
+        self:writeCentered(3, " Nuclear Facility", colors.white)
+
 
         if Status.lockdownReason and Status.lockdownReason ~= "" then
+            self:writeCentered(math.floor(h / 2) - 1, "LOCKDOWN ACTIVE", colors.white)
             self:writeCentered(math.floor(h / 2) + 1, Status.lockdownReason, colors.yellow)
+        else
+            self:writeCentered(math.floor(h / 2), "LOCKDOWN ACTIVE", colors.white)
         end
 
+        self:fillLines(h - 4, h, colors.gray)
+        self.monitor.setBackgroundColor(colors.gray)
         -- Entry is not allowed
-        self.monitor.setCursorPos(1, h - 4)
-        self.monitor.setTextColor(colors.black)
-        self:print(" For assistance:")
+        self.monitor.setCursorPos(1, h - 3)
+        self.monitor.setTextColor(colors.white)
+        self:print("  For assistance:")
+        self.monitor.setTextColor(colors.lightGray)
         self:print("  Contact personnel at the")
         self:print("  nearest security office")
         -- self:writeCentered(h - 2, "Contact security for assistance", colors.gray)
@@ -54,18 +62,19 @@ function screen:update(ctx)
         self:setColors(colors.white, colors.green)
         self:clear()
 
-
-        self:writeCentered(2, "Gantoof", colors.red)
-        self:writeCentered(3, " Nuclear Facility", colors.orange)
+        self:writeCentered(2, "Gantoof", colors.white)
+        self:writeCentered(3, " Nuclear Facility", colors.white)
 
         self:writeCentered(math.floor(h / 2), " Airlock")
         self:writeCentered(math.floor(h / 2) + 1, " A1 Entrance")
 
-        self.monitor.setTextColor(colors.gray)
+        self:fillLines(h - 3, h, colors.gray)
+        self.monitor.setBackgroundColor(colors.gray)
+        self.monitor.setTextColor(colors.white)
         self.monitor.setCursorPos(4, h - 2)
         self.monitor.write("Days since last incident")
-        self.monitor.setTextColor(colors.gray)
-        self:writeCentered(h - 1, " CLASSIFIED", colors.gray)
+        self.monitor.setTextColor(colors.lightGray)
+        self:writeCentered(h - 1, " CLASSIFIED", colors.lightGray)
     end
 end
 

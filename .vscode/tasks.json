@@ -4,7 +4,7 @@
         {
             "label": "Update package.json",
             "type": "shell",
-            "command": "python .generate-package.py",
+            "command": "python .vscode/tasks/generate-package.py",
             "group": "build",
             "problemMatcher": [],
             "detail": "Auto-update package.json with all repo files (excluding .gitignore)"

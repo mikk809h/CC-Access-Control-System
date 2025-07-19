@@ -1,6 +1,6 @@
 local log = require("core.log")
 local C = require("shared.config")
-local Sound = require("airlock.sound")
+local Audio = require("core.audio")
 local Door = require("airlock.door")
 local screenHandler = require("airlock.screenHandler")
 
@@ -25,7 +25,7 @@ local function onIdentityValidationResponse(event)
                 reason = "",
                 identifier = msg.identifier,
             })
-            Sound.play("ENTRY")
+            Audio.play("ENTRY")
             Door.setAirlockState("exit")
         else
             log.warn("Access denied by validation")
@@ -36,7 +36,7 @@ local function onIdentityValidationResponse(event)
                 reason = msg.reason or "Unknown",
                 identifier = msg.identifier,
             })
-            Sound.play("DENIED")
+            Audio.play("DENIED")
         end
     elseif msg.status == "error" then
         log.error("Validation error received")
@@ -47,7 +47,7 @@ local function onIdentityValidationResponse(event)
             reason = msg.reason or "Unknown error",
             identifier = msg.identifier,
         })
-        Sound.play("UNKNOWN_ERROR")
+        Audio.play("UNKNOWN_ERROR")
     else
         log.warn("Unknown validation status: " .. tostring(msg.status))
     end

@@ -1,40 +1,81 @@
 if periphemu then
-    -- set up the environment.
-    --This is the server.
-    -- Attach top modem
-    -- attach right speaker
-    -- attach 1 computer
-    -- detach 1 computer
-    -- Entrance.keycard
-    periphemu.create(4, "drive")   -- drive 4 for keycard
-    -- Entrtance.screen
-    periphemu.create(3, "monitor") -- computer 1 for airlock entrance
-    -- periphemu.create(6, "redstoneIntegrator")
-    -- periphemu.create(5, "redstoneIntegrator") -- remove computer 1 to simulate a detached computer
-    periphemu.create(1, "drive")   -- create computer 2 for the main system
-    periphemu.create(1, "monitor") -- create computer 3
-    periphemu.create(2, "monitor") -- create computer 4 for the airlock system
+    local testPeripherals = {
+        ["AIRLOCK"] = {
+            ["SCREEN"] = {
+                type = "monitor",
+                id = 3,
+                blockSize = { width = 1, height = 1 }
+            },
+            ["KEYCARD"] = {
+                type = "drive",
+                id = 1
+            },
+        },
+        ["ENTRANCE"] = {
+            ["SCREEN"] = {
+                type = "monitor",
+                id = 1,
+                blockSize = { width = 3, height = 2 }
+            },
+            ["KEYCARD"] = {
+                type = "drive",
+                id = 2
+            },
+        },
+        ["INFO"] = {
+            ["SCREEN"] = {
+                type = "monitor",
+                id = 2,
+                blockSize = { width = 3, height = 3 }
+            },
+        },
+        ["OTHER"] = {
+            ["SPEAKER"] = {
+                type = "speaker",
+                id = "right"
+            },
+            ["MODEM"] = {
+                type = "modem",
+                id = "left"
+            },
+        }
+    }
 
-    -- Other.speaker
-    periphemu.create("right", "speaker")
-    -- Other.modem
-    periphemu.create("left", "modem")
+    local function createTestPeripheral(object)
+        local location, peripheralType = object.id, object.type
 
+        periphemu.create(location, peripheralType)
 
-    -- Set up the monitors properly
-    local function setBlockSize(monitorId, width, height)
-        local monitor = peripheral.wrap("monitor_" .. tostring(monitorId))
-        if monitor then
-            -- monitor.setTextScale(1) -- Set text scale to 1 for better readability
-            monitor.setBlockSize(width, height)
-        else
-            error("Monitor " .. monitorId .. " not found.")
+        if object.blockSize then
+            peripheral.call("monitor_" .. tostring(location), "setBlockSize", object.blockSize.width,
+                object.blockSize.height)
         end
     end
 
-    setBlockSize(3, 1, 1) -- Entrance screen
-    setBlockSize(1, 3, 2) -- Airlock screen
-    setBlockSize(2, 3, 3) -- Info screen
+    for location, objects in pairs(testPeripherals) do
+        for name, object in pairs(objects) do
+            createTestPeripheral(object)
+        end
+    end
 end
 
-shell.run("main")
+local paths = {
+    ["airlock"] = "airlock/startup.lua",
+    -- ["control-server"] = "control-server/startup.lua",
+}
+
+local function startComponent(component)
+    local path = paths[component]
+    if path then
+        return shell.run(path)
+    end
+end
+
+for component, path in pairs(paths) do
+    print("Checking for component: " .. component)
+    if fs.exists(path) then
+        print("Starting component: " .. component)
+        startComponent(component)
+        break
+    end
+end

@@ -1,9 +1,11 @@
+require("/initialize").initialize()
+
 local log = require("core.log")
 local C = require("shared.config")
 local Ports = require("shared.ports")
 local Init = require("core.init")
 local Components = require("core.components")
-local Sound = require("airlock.sound")
+local Audio = require("core.audio")
 local Door = require("airlock.door")
 local EventHandler = require("airlock.eventHandler") -- require the new event handler
 local ScreenHandler = require("airlock.screenHandler")
@@ -25,7 +27,7 @@ Components.SetWrapper(wrapped)
 ScreenHandler.init()
 
 parallel.waitForAny(
-    Sound.loop,
+    Audio.loop,
     Door.loop,
     EventHandler.runEventLoop -- replace your old modemEventLoop with this
 )

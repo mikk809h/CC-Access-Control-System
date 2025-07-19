@@ -2,7 +2,7 @@ local log = require("core.log")
 local C = require("shared.config")
 local Ports = require("shared.ports")
 local Components = require("core.components")
-local Sound = require("airlock.sound")
+local Audio = require("core.audio")
 local Status = require("airlock.state")
 local screenHandler = require("airlock.screenHandler")
 
@@ -13,14 +13,14 @@ local function onKeyCardInsertedAirlock()
 
     if not Status.online then
         log.warn("System offline - ejecting card")
-        Sound.play("OFFLINE")
+        Audio.play("OFFLINE")
         Components.callComponent(COMPONENTS, "AIRLOCK", "KEYCARD", "ejectDisk")
         return
     end
 
     if not fs.exists("disk/identity") then
         log.warn("No identity disk found - ejecting card")
-        Sound.play("NO_IDENTITY")
+        Audio.play("NO_IDENTITY")
         Components.callComponent(COMPONENTS, "AIRLOCK", "KEYCARD", "ejectDisk")
         return
     end
@@ -40,7 +40,7 @@ local function onKeyCardInsertedAirlock()
         source = C.ID,
     })
 
-    Sound.play("VALIDATION_REQUEST")
+    Audio.play("VALIDATION_REQUEST")
 
     -- Update the screen to show the validation request
     screenHandler.updateGroup("AIRLOCK", {
