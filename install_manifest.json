@@ -7,10 +7,10 @@
     },
     "files": {
         "system": [
+            "README.md",
             "initialize.lua",
-            "logs",
-            "startup.lua",
-            "updater.lua"
+            "installer.lua",
+            "startup.lua"
         ],
         "airlock": [
             "airlock/door.lua",
@@ -54,9 +54,9 @@
         ]
     },
     "sizes": {
-        "system": 3865,
-        "airlock": 33187,
-        "control-server": 304175,
+        "system": 6158,
+        "airlock": 33524,
+        "control-server": 304194,
         "core": 15545,
         "shared": 1068
     }

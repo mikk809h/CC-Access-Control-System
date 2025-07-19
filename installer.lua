@@ -1,28 +1,33 @@
 local args = { ... }
 
---==============================--
---         CONFIGURATION        --
---==============================--
+--=== CONFIG ===--
+local installDir = "/.install-cache"
+local repoBranch = "main"
+local repoURL = "https://raw.githubusercontent.com/mikk809h/CC-Access-Control-System/" .. repoBranch .. "/"
+local manifestURL = repoURL .. "install_manifest.json"
+local localManifestPath = installDir .. "/install_manifest.json"
 
-local INSTALL_DIR = "/.install-cache"
-local REPO_BRANCH = "main"
-local REPO_PATH = "https://raw.githubusercontent.com/mikk809h/CC-Access-Control-System/" .. REPO_BRANCH .. "/"
-local MANIFEST_URL = REPO_PATH .. "install_manifest.json"
-local LOCAL_MANIFEST_PATH = INSTALL_DIR .. "/install_manifest.json"
-
---==============================--
---            UTILS             --
---==============================--
-
-local function printHelp()
-    print([[
-Usage:
-  install.lua [-help] [component1 component2 ...]
-
-  - If no components are given: updates already installed components.
-  - If components are given: installs or updates them.
-  - install.lua -help         Show this help message.
-]])
+--=== UTILS ===--
+local function color(c) term.setTextColor(c) end
+local function info(msg)
+    color(colors.lightBlue)
+    print("[i] " .. msg)
+    color(colors.white)
+end
+local function ok(msg)
+    color(colors.lime)
+    print("[+] " .. msg)
+    color(colors.white)
+end
+local function fail(msg)
+    color(colors.red)
+    print("[x] " .. msg)
+    color(colors.white)
+end
+local function warn(msg)
+    color(colors.orange)
+    print("[!] " .. msg)
+    color(colors.white)
 end
 
 local function fetch(url)
@@ -35,97 +40,107 @@ end
 
 local function fetchJSON(url)
     local raw = fetch(url)
-    if not raw then return nil end
-    return textutils.unserializeJSON(raw)
+    return raw and textutils.unserializeJSON(raw) or nil
 end
 
 local function writeFile(path, content)
     fs.makeDir(fs.getDir(path))
-    local handle = fs.open(path, "w")
-    handle.write(content)
-    handle.close()
+    local f = fs.open(path, "w")
+    f.write(content)
+    f.close()
 end
 
 local function readLocalManifest()
-    if not fs.exists(LOCAL_MANIFEST_PATH) then return nil end
-    local f = fs.open(LOCAL_MANIFEST_PATH, "r")
+    if not fs.exists(localManifestPath) then return nil end
+    local f = fs.open(localManifestPath, "r")
     local content = f.readAll()
     f.close()
     return textutils.unserializeJSON(content)
 end
 
-local function downloadAndInstallComponent(name, fileList)
-    print("Installing component: " .. name)
-    for _, file in ipairs(fileList) do
-        local url = REPO_PATH .. file
-        local content = fetch(url)
+local function resolveDependencies(manifest, targets)
+    local seen, ordered = {}, {}
+    local function visit(name)
+        if seen[name] then return end
+        seen[name] = true
+        for _, dep in ipairs(manifest.depends[name] or {}) do
+            visit(dep)
+        end
+        table.insert(ordered, name)
+    end
+    for _, t in ipairs(targets) do visit(t) end
+    return ordered
+end
 
+local function downloadComponent(name, files)
+    color(colors.yellow)
+    print("Installing component: " .. name)
+    color(colors.white)
+    for _, file in ipairs(files) do
+        local content = fetch(repoURL .. file)
         if content then
-            local dest = shell.resolve(file)
-            writeFile(dest, content)
-            print("  Installed file: " .. file)
+            writeFile(shell.resolve(file), content)
+            ok(file)
         else
-            print("  Failed to download file: " .. file)
+            fail(file)
         end
     end
 end
 
---==============================--
---         MAIN LOGIC           --
---==============================--
+local function printHelp()
+    print("Usage: install [components]")
+    print("  - If none: updates current install")
+    print("  - -help: show this help")
+end
 
--- Handle -help flag
+--=== MAIN ===--
 if #args == 1 and args[1] == "-help" then
     printHelp()
     return
 end
 
--- Ensure install directory exists
-fs.makeDir(INSTALL_DIR)
-
--- Fetch remote manifest
-local remoteManifest = fetchJSON(MANIFEST_URL)
-if not remoteManifest then
-    print("Failed to fetch remote manifest.")
+fs.makeDir(installDir)
+local remote = fetchJSON(manifestURL)
+if not remote then
+    fail("Manifest fetch failed")
     return
 end
 
--- Load existing local manifest, if any
 local localManifest = readLocalManifest()
-
--- Determine which components to install
-local componentsToInstall = {}
+local toInstall = {}
 
 if #args > 0 then
-    -- Install specified components
     for _, name in ipairs(args) do
-        if remoteManifest.files[name] then
-            table.insert(componentsToInstall, name)
+        if remote.files[name] then
+            table.insert(toInstall, name)
         else
-            print("Unknown component: " .. name)
+            warn("Unknown: " .. name)
         end
     end
 else
-    -- No args: update only components that were previously installed
-    if localManifest then
-        for name in pairs(localManifest.files) do
-            if remoteManifest.files[name] then
-                table.insert(componentsToInstall, name)
-            end
-        end
-    else
-        print("No components previously installed. Please specify components to install.")
+    if not localManifest then
+        warn("No local manifest found.")
         printHelp()
         return
     end
+    for name in pairs(localManifest.files) do
+        if remote.files[name] then
+            table.insert(toInstall, name)
+        end
+    end
 end
 
--- Download and install components
-for _, name in ipairs(componentsToInstall) do
-    downloadAndInstallComponent(name, remoteManifest.files[name])
+if #toInstall == 0 then
+    warn("Nothing to install.")
+    return
 end
 
--- Save the new manifest
-writeFile(LOCAL_MANIFEST_PATH, textutils.serializeJSON(remoteManifest))
+local fullList = resolveDependencies(remote, toInstall)
+for _, name in ipairs(fullList) do
+    downloadComponent(name, remote.files[name])
+end
 
-print("Installation complete.")
+writeFile(localManifestPath, textutils.serializeJSON(remote))
+color(colors.lime)
+print("Done.")
+color(colors.white)
