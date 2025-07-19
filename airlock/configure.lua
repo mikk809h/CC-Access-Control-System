@@ -1,4 +1,3 @@
-local util = require "core.util"
 local configurator = {}
 
 ---@class config

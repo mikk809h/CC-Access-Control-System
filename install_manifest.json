@@ -1,9 +1,9 @@
 {
     "versions": {
         "installer": "0.0.2",
-        "system": "0.0.6",
-        "core": "0.0.2",
-        "airlock": "0.0.4",
+        "system": "0.1.0",
+        "core": "0.1.0",
+        "airlock": "0.1.0",
         "control-server": "0.0.2"
     },
     "files": {
@@ -15,6 +15,7 @@
             "startup.lua"
         ],
         "airlock": [
+            "airlock/airlock.lua",
             "airlock/configure.lua",
             "airlock/door.lua",
             "airlock/eventHandler.lua",
@@ -58,10 +59,10 @@
         ]
     },
     "sizes": {
-        "system": 12688,
-        "airlock": 41724,
+        "system": 12919,
+        "airlock": 43555,
         "control-server": 304194,
-        "core": 26402,
+        "core": 28096,
         "shared": 1068
     }
 }

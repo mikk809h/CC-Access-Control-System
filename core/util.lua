@@ -391,4 +391,50 @@ end
 --#endregion
 
 
+-- FIELD VALIDATOR --
+
+-- create a new type validator<br>
+-- can execute sequential checks and check valid() to see if it is still valid
+---@nodiscard
+function util.new_validator()
+    local valid = true
+
+    ---@class validator
+    local public = {}
+
+    function public.assert_type_bool(value) valid = valid and type(value) == "boolean" end
+
+    function public.assert_type_num(value) valid = valid and type(value) == "number" end
+
+    function public.assert_type_int(value) valid = valid and util.is_int(value) end
+
+    function public.assert_type_str(value) valid = valid and type(value) == "string" end
+
+    function public.assert_type_table(value) valid = valid and type(value) == "table" end
+
+    function public.assert(check) valid = valid and (check == true) end
+
+    function public.assert_eq(check, expect) valid = valid and check == expect end
+
+    function public.assert_min(check, min) valid = valid and check >= min end
+
+    function public.assert_min_ex(check, min) valid = valid and check > min end
+
+    function public.assert_max(check, max) valid = valid and check <= max end
+
+    function public.assert_max_ex(check, max) valid = valid and check < max end
+
+    function public.assert_range(check, min, max) valid = valid and check >= min and check <= max end
+
+    function public.assert_range_ex(check, min, max) valid = valid and check > min and check < max end
+
+    function public.assert_channel(channel) valid = valid and util.is_int(channel) and channel >= 0 and channel <= 65535 end
+
+    -- check if all assertions passed successfully
+    ---@nodiscard
+    function public.valid() return valid end
+
+    return public
+end
+
 return util

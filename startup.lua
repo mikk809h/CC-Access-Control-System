@@ -92,11 +92,27 @@ if fs.exists("installer.lua") then
     end
     sleep(1.5)
 end
+
+local countExisting = 0
+for _, path in pairs(paths) do
+    if fs.exists(path) then
+        countExisting = countExisting + 1
+    end
+end
 for component, path in pairs(paths) do
     print("Checking for component: " .. component)
     if fs.exists(path) then
-        print("Starting component: " .. component)
-        startComponent(component)
-        break
+        if countExisting > 1 then
+            print("Multiple components found, please select one to start:")
+            print("Press Enter to start " .. component .. " or type 'skip' to skip this component.")
+            sure = read()
+            if sure:lower() == "" then
+                startComponent(component)
+            end
+        else
+            print("Starting component: " .. component)
+            startComponent(component)
+            break
+        end
     end
 end
