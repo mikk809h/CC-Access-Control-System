@@ -1,19 +1,15 @@
 local log = require("core.log")
 local C = require("airlock.airlock").config
-local Ports = require("core.constants").Ports
 local Components = require("core.components")
-local Audio = require("core.audio")
-local Status = require("airlock.state")
 local Door = require("airlock.door")
 local screenHandler = require("airlock.screenHandler")
 
-local COMPONENTS = C.COMPONENTS
 
 local function onKeyCardInsertedEntrance()
     log.info("Key card inserted at entrance drive")
 
     -- Always eject disk
-    Components.callComponent(COMPONENTS, "ENTRANCE", "KEYCARD", "ejectDisk")
+    Components.callComponent(C.COMPONENTS, "ENTRANCE", "KEYCARD", "ejectDisk")
 
     -- Case 2: Was in 'exit' mode or anything else, force to 'enter'
     log.info("Switching airlock from exit to enter mode")

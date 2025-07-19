@@ -6,7 +6,6 @@ local Audio = require("core.audio")
 local Status = require("airlock.state")
 local screenHandler = require("airlock.screenHandler")
 
-local COMPONENTS = C.COMPONENTS
 
 local function onKeyCardInsertedAirlock()
     log.info("Key card inserted event")
@@ -14,14 +13,14 @@ local function onKeyCardInsertedAirlock()
     if not Status.online then
         log.warn("System offline - ejecting card")
         Audio.play("OFFLINE")
-        Components.callComponent(COMPONENTS, "AIRLOCK", "KEYCARD", "ejectDisk")
+        Components.callComponent(C.COMPONENTS, "AIRLOCK", "KEYCARD", "ejectDisk")
         return
     end
 
     if not fs.exists("disk/identity") then
         log.warn("No identity disk found - ejecting card")
         Audio.play("NO_IDENTITY")
-        Components.callComponent(COMPONENTS, "AIRLOCK", "KEYCARD", "ejectDisk")
+        Components.callComponent(C.COMPONENTS, "AIRLOCK", "KEYCARD", "ejectDisk")
         return
     end
 
@@ -31,9 +30,9 @@ local function onKeyCardInsertedAirlock()
 
     log.debug("Read identity: " .. tostring(id))
 
-    Components.callComponent(COMPONENTS, "AIRLOCK", "KEYCARD", "ejectDisk")
+    Components.callComponent(C.COMPONENTS, "AIRLOCK", "KEYCARD", "ejectDisk")
 
-    Components.callComponent(COMPONENTS, "OTHER", "MODEM", "transmit", Ports.VALIDATION, Ports.VALIDATION_RESPONSE, {
+    Components.callComponent(C.COMPONENTS, "OTHER", "MODEM", "transmit", Ports.VALIDATION, Ports.VALIDATION_RESPONSE, {
         type = "validation_request",
         direction = C.AIRLOCK_DIRECTION,
         identifier = id,
