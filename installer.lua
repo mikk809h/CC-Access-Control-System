@@ -1,5 +1,5 @@
 local installer = {}
-installer.keep_original_installer = true
+installer.keep_original_installer = false
 
 local installDir = "/.install-cache"
 local repoBranch = "main"
@@ -94,12 +94,12 @@ local function downloadComponent(name, files)
         if content then
             local ok, writeErr = writeFile(shell.resolve(file), content)
             if ok then
-                info(file)
+                info("  - " .. file)
             else
-                error("Write failed: " .. writeErr)
+                error("  - Write failed: " .. writeErr)
             end
         else
-            error("Fetch failed: " .. err)
+            error("  -  Fetch failed: " .. err)
         end
     end
 end
