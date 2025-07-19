@@ -1,57 +1,94 @@
-local state          = { previous = "open", current = nil, __autoRevert = nil }
-local C              = require("shared.config")
-local Components     = require("core.components")
-local log            = require("core.log")
-local Status         = require("airlock.state")
+---@alias AirlockState "open" | "closed" | "exit" | "enter"
 
-local M              = {}
+---@class AirlockDoorState
+---@field previous AirlockState|nil
+---@field current AirlockState|nil
 
+---@type AirlockDoorState
+local state = {
+    previous = nil,
+    current = nil
+}
+
+local C = require("shared.config")
+local Components = require("core.components")
+local log = require("core.log")
+local Status = require("airlock.state")
+
+local M = {}
+
+---@type number|nil
 local autoCloseTimer = nil
 
-function M.setDoor(group, isOpen)
+---Set a door group (ENTRANCE or EXIT) to open or close via redstone.
+---@param group "ENTRANCE" | "EXIT"
+---@param isOpen boolean
+local function setDoor(group, isOpen)
     Components.callComponent(C.COMPONENTS, group, "DOOR", "setOutput", "top", isOpen)
 end
 
+---Queue a transition to the given airlock state.
+---@param newState AirlockState
 function M.setAirlockState(newState)
     state.current = newState
     os.queueEvent("airlock_door")
 end
 
-function M.changeAirlockState()
-    if not state.current then return end
+---@class StateHandler
+---@field [AirlockState] fun()
 
-    local s = state.current
-    if s == "closed" then
-        M.setDoor("ENTRANCE", false)
-        M.setDoor("EXIT", false)
-    elseif s == "open" then
-        M.setDoor("ENTRANCE", true)
-        M.setDoor("EXIT", true)
-    elseif s == "exit" then
+---@type StateHandler
+local stateHandlers = {
+    closed = function()
+        setDoor("ENTRANCE", false)
+        setDoor("EXIT", false)
+    end,
+
+    open = function()
+        setDoor("ENTRANCE", true)
+        setDoor("EXIT", true)
+    end,
+
+    exit = function()
         if state.previous ~= "closed" then
-            M.setDoor("ENTRANCE", false)
+            setDoor("ENTRANCE", false)
             sleep(C.OPENING_DELAY)
         end
-        M.setDoor("EXIT", true)
+        setDoor("EXIT", true)
         autoCloseTimer = os.startTimer(C.AUTO_CLOSE_TIME)
-    elseif s == "enter" then
+    end,
+
+    enter = function()
         if state.previous ~= "closed" then
-            M.setDoor("EXIT", false)
+            setDoor("EXIT", false)
             sleep(C.OPENING_DELAY)
         end
-        M.setDoor("ENTRANCE", true)
-    end
+        setDoor("ENTRANCE", true)
+    end,
+}
 
-    state.previous = s
-    state.current = nil
+---Execute the currently pending state transition, if any.
+function M.changeAirlockState()
+    local s = state.current
+    if not s then return end
+
+    local handler = stateHandlers[s]
+    if handler then
+        handler()
+        state.previous = s
+        state.current = nil
+    else
+        log.warn("Unhandled airlock state: " .. tostring(s))
+    end
 end
 
+---Main loop that listens for door events and timers.
 function M.loop()
     while true do
-        local event = { os.pullEvent() }
-        if event[1] == "airlock_door" then
+        local event, arg = os.pullEvent()
+        if event == "airlock_door" then
             M.changeAirlockState()
-        elseif event[1] == "timer" and event[2] == autoCloseTimer then
+        elseif event == "timer" and arg == autoCloseTimer then
             if not Status.lockdown then
                 log.debug("Auto-closing airlock after delay")
                 M.setAirlockState("enter")
