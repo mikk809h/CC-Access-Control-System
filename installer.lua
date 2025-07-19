@@ -154,8 +154,16 @@ function installer.install(component)
             warn("No files found for component: " .. name)
         end
     end
+    local localManifest = readLocalManifest() or { versions = {} }
 
-    writeFile(localManifestPath, textutils.serializeJSON(remoteManifest))
+    -- Add only installed components and their versions
+    for _, name in ipairs(fullList) do
+        if remoteManifest.versions and remoteManifest.versions[name] then
+            localManifest.versions[name] = remoteManifest.versions[name]
+        end
+    end
+
+    writeFile(localManifestPath, textutils.serializeJSON(localManifest))
     info("Installation complete for component '" .. component .. "'")
     return true
 end
@@ -199,8 +207,17 @@ function installer.update(component)
             info("Component '" .. name .. "' is up to date.")
         end
     end
+    local updatedManifest = readLocalManifest() or { versions = {} }
 
-    writeFile(localManifestPath, textutils.serializeJSON(remoteManifest))
+    for _, name in ipairs(fullList) do
+        local localVer = updatedManifest.versions[name]
+        local remoteVer = remoteManifest.versions[name]
+        if localVer ~= remoteVer then
+            updatedManifest.versions[name] = remoteVer
+        end
+    end
+
+    writeFile(localManifestPath, textutils.serializeJSON(updatedManifest))
     info("Update complete.")
     return true
 end
@@ -216,10 +233,13 @@ function installer.hasUpdates(component)
     end
 
     local componentsToCheck = {}
-
     if not component then
-        -- Check all components
-        for name in pairs(remoteManifest.files) do
+        -- Only check components listed in the local manifest
+        if not localManifest.versions then
+            info("No installed components found.")
+            return false
+        end
+        for name in pairs(localManifest.versions) do
             table.insert(componentsToCheck, name)
         end
     elseif type(component) == "string" then
