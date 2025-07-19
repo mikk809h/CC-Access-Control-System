@@ -1,10 +1,12 @@
-local state      = { previous = "open", current = nil, __autoRevert = nil }
-local C          = require("shared.config")
-local Components = require("core.components")
-local log        = require("core.log")
-local Status     = require("airlock.state")
+local state          = { previous = "open", current = nil, __autoRevert = nil }
+local C              = require("shared.config")
+local Components     = require("core.components")
+local log            = require("core.log")
+local Status         = require("airlock.state")
 
-local M          = {}
+local M              = {}
+
+local autoCloseTimer = nil
 
 function M.setDoor(group, isOpen)
     Components.callComponent(C.COMPONENTS, group, "DOOR", "setOutput", "top", isOpen)
@@ -31,7 +33,7 @@ function M.changeAirlockState()
             sleep(C.OPENING_DELAY)
         end
         M.setDoor("EXIT", true)
-        state.__autoRevert = os.clock() + C.AUTO_CLOSE_TIME
+        autoCloseTimer = os.startTimer(C.AUTO_CLOSE_TIME)
     elseif s == "enter" then
         if state.previous ~= "closed" then
             M.setDoor("EXIT", false)
@@ -46,16 +48,15 @@ end
 
 function M.loop()
     while true do
-        local event = { os.pullEvent("airlock_door") }
-        M.changeAirlockState()
-
-        -- Handle automatic revert from "exit" to "enter"
-        if not Status.lockdown then
-            if state.__autoRevert and os.clock() >= state.__autoRevert then
-                state.__autoRevert = nil
-                log.debug("Auto-reverting airlock to 'enter'")
+        local event = { os.pullEvent() }
+        if event[1] == "airlock_door" then
+            M.changeAirlockState()
+        elseif event[1] == "timer" and event[2] == autoCloseTimer then
+            if not Status.lockdown then
+                log.debug("Auto-closing airlock after delay")
                 M.setAirlockState("enter")
             end
+            autoCloseTimer = nil
         end
     end
 end
