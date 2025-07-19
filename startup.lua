@@ -99,6 +99,15 @@ if fs.exists("installer.lua") and not fs.exists(".dev") then
     sleep(1.5)
 end
 
+local lastComponentRun = nil
+if fs.exists(".lastComponent") then
+    local file = fs.open(".lastComponent", "r")
+    if file then
+        lastComponentRun = file.readAll()
+        file.close()
+    end
+    print("Last component run: " .. lastComponentRun)
+end
 local countExisting = 0
 for _, path in pairs(paths) do
     if fs.exists(path) then
@@ -108,15 +117,27 @@ end
 for component, path in pairs(paths) do
     print("Checking for component: " .. component)
     if fs.exists(path) then
-        if countExisting > 1 then
+        if countExisting > 1 and not lastComponentRun then
             print("Multiple components found, please select one to start:")
             print("Press Enter to start " .. component .. " or type 'skip' to skip this component.")
             sure = read()
             if sure:lower() == "" then
+                local file = fs.open(".lastComponent", "w")
+                if file then
+                    file.write(component)
+                    file.close()
+                end
                 startComponent(component)
             end
+        elseif lastComponentRun and lastComponentRun == component then
+            startComponent(component)
         else
             print("Starting component: " .. component)
+            local file = fs.open(".lastComponent", "w")
+            if file then
+                file.write(component)
+                file.close()
+            end
             startComponent(component)
             break
         end

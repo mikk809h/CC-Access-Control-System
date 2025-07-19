@@ -3,3 +3,4 @@ old/
 logs
 .install-cache
 .dev
+.lastComponent
