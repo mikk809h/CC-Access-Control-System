@@ -7,6 +7,8 @@
 require("config")
 require("shared")
 
+local User = require("models.user")
+
 -- === Terminal Setup ===
 local width, height = term.getSize()
 term.setBackgroundColor(colors.black)
@@ -55,6 +57,11 @@ assert(drive, "No drive found")
 ---@param ... any
 local function printf(...)
     Log[#Log + 1] = { os.clock(), ... }
+    -- append to logs.
+    local f = fs.open("logs", "a")
+    f.writeLine(table.concat({ ... }, " "))
+    f.close()
+    Log = {}
     if LogWindow then
         local defaultColor = LogWindow.getTextColor()
 
@@ -241,6 +248,11 @@ function Event.onModemMessage(evt)
         printf(colors.lime, "Validation response sent to channel ", colors.purple, tostring(channel))
     elseif channel == Port.PING and replyChannel == Port.STATUS then
         handlePing(message)
+
+        -- Limit broadcast to avoid flood if multiple pings are received
+        if LastBroadcastTime == 0 or (os.clock() - LastBroadcastTime > 2) then
+            broadcastStatus()
+        end
     end
 end
 
@@ -281,54 +293,6 @@ local function runListener()
             end
         end
     end
-end
-
-function splitString(str, sep)
-    local parts = {}
-    for part in str:gmatch("([^" .. sep .. "]+)") do
-        parts[#parts + 1] = part
-    end
-    return parts
-end
-
-function getUsers()
-    -- read users.txt line by line.
-    -- layout:
-    -- username|level|active
-    -- example:
-    -- User1|L10|true
-
-    local users = {}
-    if fs.exists("users.txt") then
-        local file = fs.open("users.txt", "r")
-        for line in file.readLine do
-            printf(colors.lightGray, "Reading user: ", colors.purple, line)
-            local parts = splitString(line, "|")
-            if #parts == 3 then
-                local username = parts[1]
-                local level = parts[2]
-                local active = parts[3] == "true"
-                users[#users + 1] = { text = username, __meta = { username = username, level = level, active = active } }
-            end
-        end
-        file.close()
-    end
-    return users
-end
-
-function saveUsers()
-    -- save users to users.txt
-    local file = fs.open("users.txt", "w")
-    for _, user in ipairs(UserList:getItems()) do
-        printf(textutils.serialize(user))
-        if user.__meta then
-            local line = string.format("%s|%s|%s", user.__meta.username, user.__meta.level or 1,
-                user.__meta.active and "true" or "false")
-            file.writeLine(line)
-        end
-    end
-    file.close()
-    printf(colors.green, "Users saved to users.txt")
 end
 
 -- === Initialization ===
@@ -535,20 +499,13 @@ dialogAddUserButton:onClick(function()
         local selectedItem = UserList:getSelectedItem()
         if selectedItem then
             printf(colors.lightGray, "Saving user: ", colors.purple, username)
-            -- Build a new user list
-            local newUserList = {}
-            for _, item in ipairs(UserList:getItems()) do
-                if item.__meta.username == selectedItem.__meta.username then
-                    newUserList[#newUserList + 1] = {
-                        text = username,
-                        __meta = { username = username, level = level.value, active = true }
-                    }
-                else
-                    newUserList[#newUserList + 1] = item
-                end
-            end
-            UserList:setItems(newUserList)
-            saveUsers()
+            printf(textutils.serialize(selectedItem))
+            selectedItem.__user:update({
+                username = username,
+                level = level.value,
+                active = true,
+            })
+            selectedItem.text = username
             DialogUsername:setText("")
             dialogLevelDropdown:clear()
             dialogLevelDropdown:setItems(defaultLevels)
@@ -560,9 +517,13 @@ dialogAddUserButton:onClick(function()
             printf(colors.red, "No user selected to edit")
             return
         end
-    else
-        UserList:addItem({ text = username, __meta = { username = username, level = level.value, active = true } })
-        saveUsers()
+    elseif dialogAddUserButton:getText() == "Add User" then
+        local user = User:new {
+            username = username,
+            level = level.value,
+            active = true
+        }
+        UserList:addItem({ text = username, __user = user })
         DialogUsername:setText("")
         dialogLevelDropdown:clear()
         dialogLevelDropdown:setItems(defaultLevels)
@@ -742,8 +703,12 @@ UserList = usersTab:addList()
 --     printf(colors.lightGray, "Selected user: ", colors.purple, tostring(item))
 -- end)
 
-for _, user in ipairs(getUsers()) do
-    UserList:addItem(user)
+
+for _, user in ipairs(User:find()) do
+    UserList:addItem({
+        text = user.username,
+        __user = user,
+    })
 end
 
 local addUserBtn = usersTab:addButton()
@@ -769,14 +734,14 @@ editUserBtn:onClick(function()
         printf(colors.lightGray, "Editing user: ", colors.purple, selectedItem.text)
         printf(colors.lightGray, "User data: ", colors.purple, textutils.serialize(selectedItem))
         dialogFrame:setVisible(true)
-        DialogUsername:setText(selectedItem.__meta.username or "")
+        DialogUsername:setText(selectedItem.__user.username or "")
         -- Set the selected attribute for the dropdown
         dialogLevelDropdown:setItems(defaultLevels)
         local items = dialogLevelDropdown:getItems()
-        printf(colors.lightGray, "Setting user level to: ", colors.purple, selectedItem.__meta.level or "UNKNOWN")
+        printf(colors.lightGray, "Setting user level to: ", colors.purple, selectedItem.__user.level or "UNKNOWN")
         for _, item in ipairs(items) do
             printf(colors.lightGray, "Checking item: ", colors.purple, item.value)
-            if item.value == selectedItem.__meta.level then
+            if item.value == selectedItem.__user.level then
                 printf(colors.lightGray, "Found matching item: ", colors.purple, item.value)
                 item.selected = true
             else
@@ -808,10 +773,8 @@ removeUserBtn:onClick(function()
             end
         end
         printf(colors.lightGray, "Removing user: ", colors.purple, textutils.serialize(selectedItem))
-
+        selectedItem.__user:delete() -- Delete the user from the database
         UserList:removeItem(index)
-        saveUsers()
-        -- printf(colors.red, "Removed user: ", colors.lightGray, selectedItem)
     else
         printf(colors.red, "No user selected to remove")
     end

@@ -1,10 +1,10 @@
 {
     "versions": {
         "installer": "0.0.2",
-        "system": "0.1.8",
+        "system": "0.1.9",
         "core": "0.1.2",
         "airlock": "0.1.4",
-        "control-server": "0.0.4",
+        "control-server": "0.0.5",
         "shared": "0.0.1"
     },
     "files": {
@@ -13,6 +13,7 @@
             "configure.lua",
             "initialize.lua",
             "installer.lua",
+            "logs.txt",
             "startup.lua"
         ],
         "airlock": [
@@ -35,6 +36,8 @@
         "control-server": [
             "control-server/basalt.lua",
             "control-server/config.lua",
+            "control-server/models/model.lua",
+            "control-server/models/user.lua",
             "control-server/shared.lua",
             "control-server/startup.lua"
         ],
@@ -64,9 +67,9 @@
         ]
     },
     "sizes": {
-        "system": 14364,
+        "system": 14436,
         "airlock": 42165,
-        "control-server": 304304,
+        "control-server": 315875,
         "core": 28703,
         "shared": 802
     }

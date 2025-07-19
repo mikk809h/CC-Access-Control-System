@@ -30,6 +30,7 @@
         "printError",
         "write",
         "read",
-        "sleep"
+        "sleep",
+        "periphemu"
     ]
 }
