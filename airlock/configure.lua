@@ -146,6 +146,50 @@ function Configurator.Peripheral.getByType(typeName)
     return results
 end
 
+Configurator.Peripheral.Monitor = {}
+function Configurator.Peripheral.Monitor.writeIdentifier()
+    local monitors = Configurator.Peripheral.getByType("monitor")
+
+    local minimumWidth = #"monitor_XX"
+    if #monitors > 0 then
+        for i, monitor in ipairs(monitors) do
+            local mon = peripheral.wrap(monitor)
+            if mon then
+                local currentScale = mon.getTextScale()
+                if currentScale ~= 1 then
+                    mon.setTextScale(1)
+                end
+                local size = { mon.getSize() }
+                if size[1] < minimumWidth then
+                    mon.setTextScale(0.5)
+                else
+                    mon.setTextScale(1)
+                end
+                mon.setBackgroundColor(colors.gray)
+                mon.setTextColor(colors.white)
+                mon.clear()
+                mon.setCursorPos(1, 1)
+                mon.write(monitor)
+            end
+        end
+    end
+end
+
+function Configurator.Peripheral.Monitor.clearIdentifiers()
+    local monitors = Configurator.Peripheral.getByType("monitor")
+    if #monitors > 0 then
+        for _, monitor in ipairs(monitors) do
+            local mon = peripheral.wrap(monitor)
+            if mon then
+                mon.setTextColor(colors.white)
+                mon.setBackgroundColor(colors.black)
+                mon.setTextScale(1)
+                mon.clear()
+            end
+        end
+    end
+end
+
 -- ========== Input Module ==========
 Configurator.Input = {}
 function Configurator.Input.inputText(prompt, maxWidth, inputType)
@@ -335,11 +379,14 @@ function Configurator.Core.run()
                     if peripheralSelected and peripheralsList[peripheralSelected] then
                         local fieldKey = fields[selectedField].key
                         Configurator.settings[fieldKey] = peripheralsList[peripheralSelected]
+                        if keyTypeMap[fieldKey] == "monitor" then
+                            Configurator.Peripheral.Monitor.clearIdentifiers()
+                        end
                     end
                     editingPeripheral = false
                     peripheralsList = nil
                     peripheralSelected = nil
-                elseif key == keys.escape then
+                elseif key == keys.left or key == keys.backspace then
                     editingPeripheral = false
                     peripheralsList = nil
                     peripheralSelected = nil
@@ -358,6 +405,9 @@ function Configurator.Core.run()
                         peripheralsList = Configurator.Peripheral.getByType(keyType)
                         if #peripheralsList > 0 then
                             editingPeripheral = true
+                            if keyType == "monitor" then
+                                Configurator.Peripheral.Monitor.writeIdentifier()
+                            end
                             peripheralSelected = 1
                         else
                             warning = "No peripherals found for " .. keyType
