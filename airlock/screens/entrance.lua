@@ -35,7 +35,7 @@ function screen:update(ctx)
 
         local w, h = self.monitor.getSize()
         self:writeCentered(math.floor(h / 2) - 1, "Airlock")
-        self:writeCentered(math.floor(h / 2), "A1 Entrance")
+        self:writeCentered(math.floor(h / 2), C.TYPE_NAME)
         self:writeCentered(math.floor(h / 2) + 2, (Status.online and "Online " or "Offline"))
     end
 end

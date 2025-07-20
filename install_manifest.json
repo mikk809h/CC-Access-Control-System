@@ -2,9 +2,9 @@
     "versions": {
         "installer": "0.0.2",
         "system": "0.2.4",
-        "core": "0.1.2",
-        "airlock": "0.3.3",
-        "control-server": "0.0.5",
+        "core": "0.1.3",
+        "airlock": "0.3.4",
+        "control-server": "0.0.6",
         "shared": "0.0.1"
     },
     "files": {
@@ -35,15 +35,18 @@
         "control-server": [
             "control-server/basalt.lua",
             "control-server/config.lua",
-            "control-server/models/model.lua",
+            "control-server/events/onPing.lua",
+            "control-server/events/onValidationRequest.lua",
             "control-server/models/user.lua",
             "control-server/shared.lua",
-            "control-server/startup.lua"
+            "control-server/startup.lua",
+            "control-server/state.lua"
         ],
         "core": [
             "core/audio.lua",
             "core/components.lua",
             "core/constants.lua",
+            "core/database/model.lua",
             "core/debug.lua",
             "core/helpers.lua",
             "core/init.lua",
@@ -67,9 +70,9 @@
     },
     "sizes": {
         "system": 14575,
-        "airlock": 57730,
-        "control-server": 315875,
-        "core": 28703,
+        "airlock": 57725,
+        "control-server": 307650,
+        "core": 41688,
         "shared": 802
     }
 }

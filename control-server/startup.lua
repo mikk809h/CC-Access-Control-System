@@ -1,13 +1,43 @@
+require("/initialize").initialize()
 --[[
     Main Control System
     Handles modem communication, ping/status validation, and lockdown control.
 ]]
 
--- === Dependencies ===
-require("config")
-require("shared")
+local log                     = require("core.log")
+local User                    = require("control-server.models.user")
+local handleValidationRequest = require("control-server.events.onValidationRequest")
+local handlePing              = require("control-server.events.onPing")
+local Constants               = require("core.constants")
+local State                   = require("control-server.state")
+local basalt                  = require("control-server.basalt")
 
-local User = require("models.user")
+BROADCAST_INTERVAL            = 10
+CHECK_ACTIVITY_INTERVAL       = 1
+PING_TIMEOUT                  = 5
+
+
+TYPE_NAME = "Access Control System"
+ID = "ACS"
+
+SOUNDS = {
+    LOCKDOWN = {
+        { "bass", 1, 12 },
+        0.4,
+        { "bass", 1, 6 },
+        0.2,
+        { "bass", 1, 0 },
+    },
+    LOCKDOWN_LIFTED = {
+        { "bass", 1, 6 },
+        0.4,
+        { "bass", 1, 0 },
+        0.2,
+        { "bass", 1, 12 },
+    },
+}
+
+
 
 -- === Terminal Setup ===
 local width, height = term.getSize()
@@ -16,19 +46,6 @@ term.clear()
 term.setCursorPos(1, 2)
 
 -- === Globals ===
-
----@type table<string, { lastPing: number, online: boolean, waitingForAck: boolean }>
-local Systems = {}
-
----@type table
-local Status = {
-    type = "status",
-    source = ID,
-    online = true,
-    lockdown = false,
-    lockdownReason = "",
-    lockdownIDs = nil,
-}
 
 local Log = {}
 LogWindow = nil
@@ -57,8 +74,7 @@ assert(drive, "No drive found")
 ---@param ... any
 local function printf(...)
     Log[#Log + 1] = { os.clock(), ... }
-    -- append to logs.
-    local f = fs.open("logs", "a")
+    local f = fs.open("logs/server.log", "a")
     f.writeLine(table.concat({ ... }, " "))
     f.close()
     Log = {}
@@ -123,24 +139,19 @@ local function count(tbl, predicate)
     return c
 end
 
--- === Status Management ===
+-- === State.status Management ===
 
 local function setStatusField(key, value)
-    if Status[key] ~= value then
-        Status[key] = value
+    if State.status[key] ~= value then
+        State.status[key] = value
     end
 end
 
 local function broadcastStatus()
-    modem.transmit(Port.STATUS, Port.PING, Status)
+    modem.transmit(Constants.Ports.STATUS, Constants.Ports.PING, State.status)
     LastBroadcastTime = os.clock()
-    -- printf(
-    --     colors.gray, "Broadcasting status.",
-    --     colors.gray, " online systems: ",
-    --     colors.purple, tostring(count(Systems, function(sys) return sys.online end))
-    -- )
     -- Set all systems to waiting for ACK
-    for id, sys in pairs(Systems) do
+    for id, sys in pairs(State.clients) do
         sys.waitingForAck = true
     end
 end
@@ -172,58 +183,9 @@ function setLockdown(lockdown, reason, ids)
     end
 end
 
--- === Handlers ===
-
-local function handleValidationRequest(msg)
-    if not msg or msg.type ~= "validation_request" or not msg.identifier or msg.identifier == "" then
-        return { type = "validation_response", status = "error", message = "Invalid or missing ID" }
-    end
-
-    printf(colors.green, "Validating ID: ", colors.lightGray, tostring(msg.identifier))
-
-    if Status.lockdown then
-        printf(colors.red, "Validation failed: Lockdown active")
-        return {
-            type = "validation_response",
-            status = "success",
-            action = "deny",
-            reason = "lockdown",
-            identifier = msg.identifier,
-            target = msg.source,
-        }
-    end
-    return {
-        type = "validation_response",
-        status = "success",
-        action = "allow",
-        identifier = msg.identifier,
-        target = msg.source,
-    }
-end
-
-
-local function handlePing(msg)
-    if type(msg) ~= "table" or msg.type ~= "status" then
-        printf(colors.red, "Invalid ping message: ", colors.lightGray, tostring(msg.type))
-        return
-    end
-
-    local now = os.clock()
-    printf(colors.lightGray, "ACK received from ", colors.purple,
-        msg.source)
-
-    if not Systems[msg.source] then
-        Systems[msg.source] = {}
-    end
-
-    Systems[msg.source].lastPing = now
-    Systems[msg.source].online = true
-    Systems[msg.source].waitingForAck = false
-end
-
 local function checkPendingAcks()
     local now = os.clock()
-    for id, sys in pairs(Systems) do
+    for id, sys in pairs(State.clients) do
         if sys.waitingForAck and (now - LastBroadcastTime > PING_TIMEOUT) then
             if sys.online then
                 printf(colors.red, colors.purple, id, colors.red, " timed out")
@@ -242,11 +204,11 @@ function Event.onModemMessage(evt)
     local _, side, channel, replyChannel, message = table.unpack(evt)
     printf(colors.gray, "modem_message on ", tostring(channel), ":", tostring(replyChannel))
 
-    if channel == Port.VALIDATION and replyChannel == Port.VALIDATION_RESPONSE then
+    if channel == Constants.Ports.VALIDATION and replyChannel == Constants.Ports.VALIDATION_RESPONSE then
         local response = handleValidationRequest(message)
-        modem.transmit(Port.VALIDATION_RESPONSE, Port.VALIDATION, response)
+        modem.transmit(Constants.Ports.VALIDATION_RESPONSE, Constants.Ports.VALIDATION, response)
         printf(colors.lime, "Validation response sent to channel ", colors.purple, tostring(channel))
-    elseif channel == Port.PING and replyChannel == Port.STATUS then
+    elseif channel == Constants.Ports.PING and replyChannel == Constants.Ports.STATUS then
         handlePing(message)
 
         -- Limit broadcast to avoid flood if multiple pings are received
@@ -274,7 +236,7 @@ local function runListener()
             --     printf("Key pressed: ", colors.purple, keys.getName(key))
             -- end
             -- if key == keys.l then
-            --     setLockdown(not Status.lockdown, "Manual toggle", { "A1.Entrance" })
+            --     setLockdown(not State.status.lockdown, "Manual toggle", { "A1.Entrance" })
             --     -- elseif key == keys.q then
             --     --     LogWindow.scroll(-1)
             --     -- elseif key == keys.e then
@@ -298,9 +260,10 @@ end
 -- === Initialization ===
 
 printf(colors.lightGray, "Starting ", colors.purple, TYPE_NAME, colors.gray, -3, "ID: ", colors.purple, ID)
-printf(colors.lightGray, "Opening ports: ", colors.purple, tostring(Port.VALIDATION), ", ", tostring(Port.PING))
-modem.open(Port.VALIDATION)
-modem.open(Port.PING)
+printf(colors.lightGray, "Opening ports: ", colors.purple, tostring(Constants.Ports.VALIDATION), ", ",
+    tostring(Constants.Ports.PING))
+modem.open(Constants.Ports.VALIDATION)
+modem.open(Constants.Ports.PING)
 
 broadcastStatus()
 
@@ -328,7 +291,6 @@ end
 -- === Basalt UI Setup ===
 
 
-local basalt = require("basalt")
 
 local mainFrame = basalt.getMainFrame()
 
@@ -597,23 +559,23 @@ mainTab:addLabel()
     :setForeground(colors.orange)
 
 local statusLabel = mainTab:addLabel()
-    :setText(Status.online and "Online" or "Offline")
+    :setText(State.status.online and "Online" or "Offline")
     :setPosition(2 + #("Facility Status: "), 2)
-    :setForeground(Status.online and colors.green or colors.red)
+    :setForeground(State.status.online and colors.green or colors.red)
 
 local lockdownActive = mainTab:addLabel()
     :setText("Lockdown active! ")
     --align right
     :setPosition("{parent.width - " .. tostring(#("Lockdown active! ")) .. "}", 2)
     :setForeground(colors.red)
-    :setVisible(Status.lockdown)
+    :setVisible(State.status.lockdown)
 
 mainTab:addLabel()
     :setText("Airlock systems online: ")
     :setPosition(2, 4)
     :setForeground(colors.lightGray)
 
-local airlockCount = count(Systems, function(sys) return sys.online end)
+local airlockCount = count(State.clients, function(sys) return sys.online end)
 local airlockLabel = mainTab:addLabel()
     :setText(tostring(airlockCount))
     :setPosition(2 + #("Airlock systems online: "), 4)
@@ -637,20 +599,20 @@ local lockdownBtn = logsTab:addButton()
     :setText("Activate Lockdown")
     :setSize(21, 3)
     :setPosition(2, 4)
-    :setBackground(Status.lockdown and colors.red or colors.orange)
+    :setBackground(State.status.lockdown and colors.red or colors.orange)
 lockdownBtn:onClick(function()
     -- toggle color
-    onLockdown(not Status.lockdown)
+    onLockdown(not State.status.lockdown)
 end)
 
 local lockdownInput = logsTab:addInput()
-    :setText(Status.lockdownReason or "")
+    :setText(State.status.lockdownReason or "")
     :setSize("{parent.width - 4}", 1)
     :setPosition(2, 2)
     :setPlaceholder("Lockdown Reason (optional)")
     :onKey(function(self, key)
         if key == keys.enter or key == keys.numPadEnter then
-            onLockdown(not Status.lockdown)
+            onLockdown(not State.status.lockdown)
         end
     end)
 
@@ -810,17 +772,17 @@ mainTabBtn:onClick(function()
     usersTabBtn:setBackground(colors.lightGray)
     usersTabBtn:setForeground(colors.black)
 
-    airlockCount = count(Systems, function(sys) return sys.online end)
+    airlockCount = count(State.clients, function(sys) return sys.online end)
     airlockLabel:setText(tostring(airlockCount))
     airlockLabel:setForeground(airlockCount > 0 and colors.green or colors.red)
 
-    statusLabel:setText(Status.online and "Online" or "Offline")
-    statusLabel:setForeground(Status.online and colors.green or colors.red)
+    statusLabel:setText(State.status.online and "Online" or "Offline")
+    statusLabel:setForeground(State.status.online and colors.green or colors.red)
 
-    lockdownActive:setVisible(Status.lockdown)
-    lockdownActive:setText(Status.lockdown and "Lockdown active! " .. (Status.lockdownReason or "") or
+    lockdownActive:setVisible(State.status.lockdown)
+    lockdownActive:setText(State.status.lockdown and "Lockdown active! " .. (State.status.lockdownReason or "") or
         "No lockdown active")
-    lockdownActive:setForeground(Status.lockdown and colors.red or colors.green)
+    lockdownActive:setForeground(State.status.lockdown and colors.red or colors.green)
 
     logsTab:setVisible(false)
     usersTab:setVisible(false)
@@ -872,50 +834,27 @@ end)
 parallel.waitForAny(runListener, basalt.run, function()
         while true do
             -- Update main tab
-            local newCount = count(Systems, function(sys) return sys.online end)
+            local newCount = count(State.clients, function(sys) return sys.online end)
             if newCount ~= airlockCount then
                 airlockCount = newCount
                 airlockLabel:setText(tostring(airlockCount))
                 airlockLabel:setForeground(airlockCount > 0 and colors.green or colors.red)
             end
 
-            local newStatus = Status.online and "Online" or "Offline"
+            local newStatus = State.status.online and "Online" or "Offline"
             if newStatus ~= statusLabel:getText() then
                 statusLabel:setText(newStatus)
-                statusLabel:setForeground(Status.online and colors.green or colors.red)
+                statusLabel:setForeground(State.status.online and colors.green or colors.red)
             end
 
-            if Status.lockdown then
-                lockdownActive:setText("Lockdown active! " .. (Status.lockdownReason or ""))
+            if State.status.lockdown then
+                lockdownActive:setText("Lockdown active! " .. (State.status.lockdownReason or ""))
                 lockdownActive:setForeground(colors.red)
             else
                 lockdownActive:setText("No lockdown active")
                 lockdownActive:setForeground(colors.green)
             end
             sleep(1)
-        end
-    end, function()
-        -- autosave log append
-        while true do
-            sleep(2)
-            local logFile = nil
-            if not fs.exists("logs") then
-                logFile = fs.open("logs", "w")
-            else
-                logFile = fs.open("logs", "a")
-            end
-
-            if logFile then
-                for _, entry in ipairs(Log) do
-                    local time = os.date("%H:%M:%S", entry[1])
-                    local text = table.concat({ table.unpack(entry, 2) }, " ")
-                    logFile.writeLine(string.format("[%s] %s", time, text))
-                end
-                logFile.close()
-                Log = {} -- Clear the log after saving
-            else
-                printf(colors.red, "Failed to open log file for writing.")
-            end
         end
     end, soundPlayer,
     function()

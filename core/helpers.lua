@@ -1,5 +1,17 @@
 local helpers = {}
 
+
+function helpers.split(str, sep)
+    if sep == nil then
+        sep = "%s"
+    end
+    local t = {}
+    for part in string.gmatch(str, "([^" .. sep .. "]+)") do
+        table.insert(t, part)
+    end
+    return t
+end
+
 --- Counts elements in a table.
 -- If predicate is provided, counts only elements where predicate(value, key) returns true.
 ---@param tbl table<any, any> Table to count elements from

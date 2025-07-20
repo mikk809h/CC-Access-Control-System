@@ -6,6 +6,12 @@
 ---@field critical fun(...): nil
 local log = {}
 
+log.config = {
+    logToFile = true,
+    logFilePath = "logs/log.txt",
+
+}
+
 local defaultColor = colors.lightGray
 local levelColors = {
     DEBUG = colors.gray,
@@ -107,11 +113,43 @@ local function print(target, ...)
     return nLinesPrinted
 end
 
+local function appendLog(...)
+    if not log.config.logToFile then
+        return
+    end
+    -- Ensure the full path exists
+
+    if not fs.exists(fs.getDir(log.config.logFilePath)) then
+        fs.makeDir(fs.getDir(log.config.logFilePath))
+    end
+
+    local logFile = fs.open(log.config.logFilePath, "a")
+    if logFile then
+        logFile.write(getTimestamp() .. " ")
+        -- print tables recursively
+        local args = { ... }
+        for i, v in ipairs(args) do
+            if type(v) == "table" then
+                logFile.write(textutils.serialize(v))
+            else
+                logFile.write(tostring(v))
+            end
+            if i < #args then
+                logFile.write("\t")
+            end
+        end
+        logFile.write("\n")
+        logFile.close()
+    end
+end
+
 --- Core print function for colored log output
 ---@param target table
 ---@param level string
 ---@param ... any
 local function coloredPrintToTarget(target, level, ...)
+    local args = { ... }
+    appendLog(...)
     -- if target width is too small, do not include timestamp
     local w, _ = target.getSize()
     if w > 20 then
@@ -124,7 +162,6 @@ local function coloredPrintToTarget(target, level, ...)
 
     -- Print message
     target.setTextColor(defaultColor)
-    local args = { ... }
     for _, part in ipairs(args) do
         if type(part) == "table" and part[1] and part[2] then
             target.setTextColor(part[1])

@@ -1,4 +1,4 @@
-local Model = require("models.model")
+local Model = require("core.database.model")
 
 
 local User = Model.define("users.txt", "username", {

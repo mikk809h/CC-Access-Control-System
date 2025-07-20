@@ -1,9 +1,9 @@
 local BaseScreen = require("airlock.screens.base")
 local Status = require("airlock.state")
 local log = require("core.log")
-local C = require("airlock.airlock").config
 local debug = require("core.debug")
 local helpers = require("core.helpers")
+local C = require("airlock.airlock").config
 
 ---@type BaseScreen
 local screen = BaseScreen:new("INFO", "SCREEN")
@@ -66,7 +66,7 @@ function screen:update(ctx)
         self:writeCentered(3, " Nuclear Facility", colors.white)
 
         self:writeCentered(math.floor(h / 2), " Airlock")
-        self:writeCentered(math.floor(h / 2) + 1, " A1 Entrance")
+        self:writeCentered(math.floor(h / 2) + 1, C.TYPE_NAME)
 
         self:fillLines(h - 3, h, colors.gray)
         self.monitor.setBackgroundColor(colors.gray)
