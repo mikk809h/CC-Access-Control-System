@@ -2,180 +2,6 @@ local Configurator = {}
 
 -- Data definitions
 
-local debug = {}
-debug.enabled = true                   -- Set to false to disable debug logging
-debug.outputMonitorName = "monitor_29" -- Change to your monitor name if needed
-
--- if called debug(...) add metatable for that
-
---- Write wrapped text to a target
----@param target table monitor/terminal-like object
----@param sText string|number
----@return integer nLinesPrinted
-function debug.__write(target, sText)
-    assert(1, sText, "string", "number")
-
-    local w, h = target.getSize()
-    local x, y = target.getCursorPos()
-
-    local nLinesPrinted = 0
-    local function newLine()
-        if y + 1 <= h then
-            target.setCursorPos(1, y + 1)
-        else
-            target.setCursorPos(1, h)
-            target.scroll(1)
-        end
-        x, y = target.getCursorPos()
-        nLinesPrinted = nLinesPrinted + 1
-    end
-
-    -- Print the line with proper word wrapping
-    sText = tostring(sText)
-    while #sText > 0 do
-        local whitespace = string.match(sText, "^[ \t]+")
-        if whitespace then
-            -- Print whitespace
-            target.write(whitespace)
-            x, y = target.getCursorPos()
-            sText = string.sub(sText, #whitespace + 1)
-        end
-
-        local newline = string.match(sText, "^\n")
-        if newline then
-            -- Print newlines
-            newLine()
-            sText = string.sub(sText, 2)
-        end
-
-        local text = string.match(sText, "^[^ \t\n]+")
-        if text then
-            sText = string.sub(sText, #text + 1)
-            if #text > w then
-                -- Print a multiline word
-                while #text > 0 do
-                    if x > w then
-                        newLine()
-                    end
-                    target.write(text)
-                    text = string.sub(text, w - x + 2)
-                    x, y = target.getCursorPos()
-                end
-            else
-                -- Print a word normally
-                if x + #text - 1 > w then
-                    newLine()
-                end
-                target.write(text)
-                x, y = target.getCursorPos()
-            end
-        end
-    end
-
-    return nLinesPrinted
-end
-
---- Print values with tab separation and wrapping
----@param target table
----@param ... any
----@return integer
-function debug.__print(target, ...)
-    local nLinesPrinted = 0
-    local nLimit = select("#", ...)
-    for n = 1, nLimit do
-        local s = tostring(select(n, ...))
-        if n < nLimit then
-            s = s .. "\t"
-        end
-        nLinesPrinted = nLinesPrinted + debug.__write(target, s)
-    end
-    nLinesPrinted = nLinesPrinted + debug.__write(target, "\n")
-    return nLinesPrinted
-end
-
-function debug.init()
-    assert(debug.outputTerm, "outputTerm must be set before calling debug.init()")
-
-    -- clear
-    debug.outputTerm.setBackgroundColor(colors.black)
-    debug.outputTerm.setTextColor(colors.white)
-    debug.outputTerm.clear()
-    debug.outputTerm.setCursorPos(1, 1)
-    -- set text scale
-    if debug.outputTerm.setTextScale then
-        debug.outputTerm.setTextScale(1)
-        debug.outputTerm.setCursorPos(1, 1)
-    end
-
-    local width, height = debug.outputTerm.getSize()
-    -- print header
-    debug.__print(debug.outputTerm, "Airlock Configurator Debug Log")
-    debug.__print(debug.outputTerm, string.rep("=", width))
-    debug.__print(debug.outputTerm, "Debugging started at: ", os.date("%Y-%m-%d %H:%M:%S"))
-    debug.__print(debug.outputTerm, string.rep("=", width))
-end
-
-function debug.log(...)
-    if not debug.enabled then return end
-    local args = { ... }
-    local output = {}
-    for i, v in ipairs(args) do
-        if type(v) == "table" then
-            table.insert(output, textutils.serialize(v))
-        else
-            table.insert(output, tostring(v))
-        end
-    end
-    local message = table.concat(output, " ")
-    if debug.outputTerm then
-        debug.__print(debug.outputTerm, message)
-    else
-        print(message)
-    end
-end
-
-function debug.dump(obj, name, level)
-    if not debug.enabled then return end
-    -- recursive dump of object.
-    level = level or 0
-    local indent = string.rep("  ", level)
-    if type(obj) == "table" then
-        debug.__print(debug.outputTerm, indent .. name .. " = {")
-        for k, v in pairs(obj) do
-            if type(v) == "table" then
-                debug.dump(v, k, level + 1)
-            else
-                debug.__print(debug.outputTerm, indent .. "  " .. tostring(k) .. " = " .. tostring(v))
-            end
-        end
-        debug.__print(debug.outputTerm, indent .. "}")
-    else
-        debug.__print(debug.outputTerm, indent .. name .. " = " .. tostring(obj))
-    end
-end
-
-if debug.enabled then
-    if peripheral.isPresent(debug.outputMonitorName) then
-        local mon = peripheral.wrap(debug.outputMonitorName)
-
-        if mon then
-            debug.outputTerm = mon
-        else
-            debug.outputTerm = term
-        end
-
-        debug.init()
-    else
-        debug.outputTerm = term -- Fallback to default terminal if monitor not present
-    end
-end
-
-setmetatable(debug, {
-    __call = function(_, ...)
-        debug.log(...)
-    end,
-})
-
 Configurator.keyTypeMap = {
     ["component.entrance.door"] = "redstoneIntegrator",
     ["component.entrance.keycard"] = "drive",
@@ -647,21 +473,16 @@ end
 function Event.onMouseDown(button, x, y)
     local leftWidth = Configurator.leftWidth
     local fields = Configurator.fields
-    local selectedField = Configurator.selectedField
     local rightX = leftWidth + 2
     local listStartY = Configurator.rightY
 
     if not Configurator.editingPeripheral then
         -- Clicked in the field list
-        debug("Mouse click at", x, y, "on field list")
         if y >= 2 and y <= #fields + 1 and x <= leftWidth - 2 then
             Configurator.selectedField = y - 1
             Event.onSelect() -- Simulate pressing Enter on the field
-        elseif x >= rightX and x < rightX + Configurator.rightWidth and y >= listStartY then
-            debug("Action impossible")
         end
     else
-        debug("Mouse click at", x, y, "on peripheral selection")
         -- Clicked inside peripheral selection pane
         if x >= rightX and x < rightX + Configurator.rightWidth and y >= listStartY then
             local relY = y - listStartY + 1
@@ -670,7 +491,6 @@ function Event.onMouseDown(button, x, y)
                 Event.onPeripheralSelect()
             end
         elseif x <= leftWidth - 2 then
-            debug("Returning without action.")
             -- Clicked outside the peripheral selection area, cancel editing
             Event.onPeripheralCancel()
         end
@@ -722,13 +542,10 @@ function Event.onMouseScroll(direction, x, y)
 end
 
 function Event.onPeripheralSelect()
-    debug("Peripheral selected:", Configurator.peripheralSelected)
     local selected = Configurator.peripheralsList[Configurator.peripheralSelected]
     local field = Configurator.fields[Configurator.selectedField]
     local fieldKey = field.key
     Configurator.settings[fieldKey] = selected
-
-    debug("Setting", fieldKey, "to", selected)
 
     if Configurator.keyTypeMap[fieldKey] == "monitor" then
         Configurator.Peripheral.Monitor.clearIdentifiers()
