@@ -7,13 +7,15 @@ local Audio         = require("core.audio")
 local Door          = require("airlock.door")
 local EventHandler  = require("airlock.eventHandler") -- require the new event handler
 local ScreenHandler = require("airlock.screenHandler")
-local configure     = require("airlock.configure")
+local Configurator  = require("airlock.configure")
 
 local Airlock       = require("airlock.airlock")
 
 if not Airlock.load_config() then
+    log.warn("Failed to load a valid configuration, attempting to reconfigure...")
+    sleep(0.5)
     -- try to reconfigure (user action)
-    local success, error = configure.configure()
+    local success, error = Configurator.run()
     if success then
         if not Airlock.load_config() then
             log.error("failed to load a valid configuration, please reconfigure")

@@ -124,19 +124,19 @@ local lastRun = loadLastComponent()
 
 if lastRun and fs.exists(components[lastRun]) then
     print("Starting same component as last run: " .. lastRun)
-    sleep(1.25)
+    sleep(0.6)
     runComponent(lastRun)
 else
     if #available == 1 then
         print("Starting componenet: " .. available[1])
-        sleep(1.25)
+        sleep(0.6)
         runComponent(available[1])
     elseif #available > 1 then
         print("Multiple components found.")
         local selected = promptComponentSelection(available)
         if selected then
             print("Starting component: " .. selected)
-            sleep(1.25)
+            sleep(0.6)
             runComponent(selected)
         else
             print("No component selected.")

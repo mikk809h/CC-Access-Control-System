@@ -147,6 +147,28 @@ function Configurator.Peripheral.getByType(typeName)
 end
 
 Configurator.Peripheral.Monitor = {}
+
+function Configurator.Peripheral.Monitor.writeCFGMode()
+    local monitors = Configurator.Peripheral.getByType("monitor")
+    if #monitors > 0 then
+        for _, monitor in ipairs(monitors) do
+            local mon = peripheral.wrap(monitor)
+            if mon then
+                mon.setBackgroundColor(colors.orange)
+                mon.setTextColor(colors.black)
+                mon.clear()
+                mon.setCursorPos(2, 2)
+                mon.write("Configuration")
+                mon.setCursorPos(2, 3)
+                mon.write("Required")
+                mon.setCursorPos(2, 4)
+                mon.setTextColor(colors.gray)
+                mon.write(monitor)
+            end
+        end
+    end
+end
+
 function Configurator.Peripheral.Monitor.writeIdentifier()
     local monitors = Configurator.Peripheral.getByType("monitor")
 
@@ -154,11 +176,6 @@ function Configurator.Peripheral.Monitor.writeIdentifier()
     if #monitors > 0 then
         for i, monitor in ipairs(monitors) do
             local mon = peripheral.wrap(monitor)
-            if debug.enabled and debug.outputMonitorName then
-                if monitor == debug.outputMonitorName then
-                    mon = nil
-                end
-            end
             if mon then
                 local currentScale = mon.getTextScale()
                 if currentScale ~= 1 then
@@ -182,11 +199,6 @@ end
 
 function Configurator.Peripheral.Monitor.writeSelection(selected)
     local mon = peripheral.wrap(selected)
-    if debug.enabled and debug.outputMonitorName then
-        if selected == debug.outputMonitorName then
-            mon = nil
-        end
-    end
     if mon then
         mon.setBackgroundColor(colors.green)
         mon.setTextColor(colors.black)
@@ -219,11 +231,6 @@ function Configurator.Peripheral.Monitor.clearIdentifiers()
     if #monitors > 0 then
         for _, monitor in ipairs(monitors) do
             local mon = peripheral.wrap(monitor)
-            if debug.enabled and debug.outputMonitorName then
-                if monitor == debug.outputMonitorName then
-                    mon = nil
-                end
-            end
             if mon then
                 mon.setTextColor(colors.white)
                 mon.setBackgroundColor(colors.black)
@@ -598,7 +605,8 @@ function Event.onExit()
     Configurator.shouldExit = true
 end
 
-function Configurator.Core.run()
+function Configurator.run()
+    Configurator.Peripheral.Monitor.writeCFGMode()
     local fields = Configurator.fields
 
     -- Initialize Configurator state
@@ -660,7 +668,14 @@ function Configurator.Core.run()
     -- clear identifiers
     Configurator.Peripheral.Monitor.clearIdentifiers()
     print("Configuration saved.")
+
+    Configurator.Peripheral.Monitor.clearIdentifiers()
+
+    return true
 end
 
 -- ========== Entry Point ==========
-Configurator.Core.run()
+-- Configurator.run()
+
+
+return Configurator
