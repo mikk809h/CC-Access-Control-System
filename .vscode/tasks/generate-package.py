@@ -38,6 +38,13 @@ def load_gitignore():
                 if not line or line.startswith("#"):
                     continue
                 patterns.append(line)
+
+    # Now add those to EXCLUDED_PATHS
+    for pattern in patterns:
+        # Only add if not already excluded
+        if not any(pattern.startswith(excluded) for excluded in EXCLUDED_PATHS):
+            EXCLUDED_PATHS.add(pattern)
+
     return patterns
 
 def is_ignored(path, ignore_patterns):

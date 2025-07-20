@@ -39,7 +39,7 @@ end
 
 -- === Auto Update System ===
 local function performAutoUpdate()
-    if not (fs.exists("installer.lua") and not fs.exists(".dev")) then return end
+    if not (fs.exists("installer.lua") and not fs.exists("__DEV__")) then return end
 
     print("Running installer...")
     local installer = require("installer")
@@ -66,8 +66,11 @@ local components = {
 }
 
 local function loadLastComponent()
-    if not fs.exists(".lastComponent") then return nil end
-    local file = fs.open(".lastComponent", "r")
+    if not fs.exists(".cache") then
+        fs.makeDir(".cache")
+    end
+    if not fs.exists(".cache/startup") then return nil end
+    local file = fs.open(".cache/startup", "r")
     if not file then return nil end
     local content = file.readAll()
     file.close()
@@ -75,7 +78,7 @@ local function loadLastComponent()
 end
 
 local function saveLastComponent(name)
-    local file = fs.open(".lastComponent", "w")
+    local file = fs.open(".cache/startup", "w")
     if file then
         file.write(name)
         file.close()

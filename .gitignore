@@ -5,3 +5,5 @@ logs
 .dev
 .lastComponent
 users.txt
+.cache
+__DEV__
