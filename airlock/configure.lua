@@ -2,6 +2,180 @@ local Configurator = {}
 
 -- Data definitions
 
+local debug = {}
+debug.enabled = true                   -- Set to false to disable debug logging
+debug.outputMonitorName = "monitor_29" -- Change to your monitor name if needed
+
+-- if called debug(...) add metatable for that
+
+--- Write wrapped text to a target
+---@param target table monitor/terminal-like object
+---@param sText string|number
+---@return integer nLinesPrinted
+function debug.__write(target, sText)
+    assert(1, sText, "string", "number")
+
+    local w, h = target.getSize()
+    local x, y = target.getCursorPos()
+
+    local nLinesPrinted = 0
+    local function newLine()
+        if y + 1 <= h then
+            target.setCursorPos(1, y + 1)
+        else
+            target.setCursorPos(1, h)
+            target.scroll(1)
+        end
+        x, y = target.getCursorPos()
+        nLinesPrinted = nLinesPrinted + 1
+    end
+
+    -- Print the line with proper word wrapping
+    sText = tostring(sText)
+    while #sText > 0 do
+        local whitespace = string.match(sText, "^[ \t]+")
+        if whitespace then
+            -- Print whitespace
+            target.write(whitespace)
+            x, y = target.getCursorPos()
+            sText = string.sub(sText, #whitespace + 1)
+        end
+
+        local newline = string.match(sText, "^\n")
+        if newline then
+            -- Print newlines
+            newLine()
+            sText = string.sub(sText, 2)
+        end
+
+        local text = string.match(sText, "^[^ \t\n]+")
+        if text then
+            sText = string.sub(sText, #text + 1)
+            if #text > w then
+                -- Print a multiline word
+                while #text > 0 do
+                    if x > w then
+                        newLine()
+                    end
+                    target.write(text)
+                    text = string.sub(text, w - x + 2)
+                    x, y = target.getCursorPos()
+                end
+            else
+                -- Print a word normally
+                if x + #text - 1 > w then
+                    newLine()
+                end
+                target.write(text)
+                x, y = target.getCursorPos()
+            end
+        end
+    end
+
+    return nLinesPrinted
+end
+
+--- Print values with tab separation and wrapping
+---@param target table
+---@param ... any
+---@return integer
+function debug.__print(target, ...)
+    local nLinesPrinted = 0
+    local nLimit = select("#", ...)
+    for n = 1, nLimit do
+        local s = tostring(select(n, ...))
+        if n < nLimit then
+            s = s .. "\t"
+        end
+        nLinesPrinted = nLinesPrinted + debug.__write(target, s)
+    end
+    nLinesPrinted = nLinesPrinted + debug.__write(target, "\n")
+    return nLinesPrinted
+end
+
+function debug.init()
+    assert(debug.outputTerm, "outputTerm must be set before calling debug.init()")
+
+    -- clear
+    debug.outputTerm.setBackgroundColor(colors.black)
+    debug.outputTerm.setTextColor(colors.white)
+    debug.outputTerm.clear()
+    debug.outputTerm.setCursorPos(1, 1)
+    -- set text scale
+    if debug.outputTerm.setTextScale then
+        debug.outputTerm.setTextScale(1)
+        debug.outputTerm.setCursorPos(1, 1)
+    end
+
+    local width, height = debug.outputTerm.getSize()
+    -- print header
+    debug.__print(debug.outputTerm, "Airlock Configurator Debug Log")
+    debug.__print(debug.outputTerm, string.rep("=", width))
+    debug.__print(debug.outputTerm, "Debugging started at: ", os.date("%Y-%m-%d %H:%M:%S"))
+    debug.__print(debug.outputTerm, string.rep("=", width))
+end
+
+function debug.log(...)
+    if not debug.enabled then return end
+    local args = { ... }
+    local output = {}
+    for i, v in ipairs(args) do
+        if type(v) == "table" then
+            table.insert(output, textutils.serialize(v))
+        else
+            table.insert(output, tostring(v))
+        end
+    end
+    local message = table.concat(output, " ")
+    if debug.outputTerm then
+        debug.__print(debug.outputTerm, message)
+    else
+        print(message)
+    end
+end
+
+function debug.dump(obj, name, level)
+    if not debug.enabled then return end
+    -- recursive dump of object.
+    level = level or 0
+    local indent = string.rep("  ", level)
+    if type(obj) == "table" then
+        debug.__print(debug.outputTerm, indent .. name .. " = {")
+        for k, v in pairs(obj) do
+            if type(v) == "table" then
+                debug.dump(v, k, level + 1)
+            else
+                debug.__print(debug.outputTerm, indent .. "  " .. tostring(k) .. " = " .. tostring(v))
+            end
+        end
+        debug.__print(debug.outputTerm, indent .. "}")
+    else
+        debug.__print(debug.outputTerm, indent .. name .. " = " .. tostring(obj))
+    end
+end
+
+if debug.enabled then
+    if peripheral.isPresent(debug.outputMonitorName) then
+        local mon = peripheral.wrap(debug.outputMonitorName)
+
+        if mon then
+            debug.outputTerm = mon
+        else
+            debug.outputTerm = term
+        end
+
+        debug.init()
+    else
+        debug.outputTerm = term -- Fallback to default terminal if monitor not present
+    end
+end
+
+setmetatable(debug, {
+    __call = function(_, ...)
+        debug.log(...)
+    end,
+})
+
 Configurator.keyTypeMap = {
     ["component.entrance.door"] = "redstoneIntegrator",
     ["component.entrance.keycard"] = "drive",
@@ -154,6 +328,11 @@ function Configurator.Peripheral.Monitor.writeIdentifier()
     if #monitors > 0 then
         for i, monitor in ipairs(monitors) do
             local mon = peripheral.wrap(monitor)
+            if debug.enabled and debug.outputMonitorName then
+                if monitor == debug.outputMonitorName then
+                    mon = nil
+                end
+            end
             if mon then
                 local currentScale = mon.getTextScale()
                 if currentScale ~= 1 then
@@ -175,11 +354,50 @@ function Configurator.Peripheral.Monitor.writeIdentifier()
     end
 end
 
+function Configurator.Peripheral.Monitor.writeSelection(selected)
+    local mon = peripheral.wrap(selected)
+    if debug.enabled and debug.outputMonitorName then
+        if selected == debug.outputMonitorName then
+            mon = nil
+        end
+    end
+    if mon then
+        mon.setBackgroundColor(colors.green)
+        mon.setTextColor(colors.black)
+        mon.setTextScale(1)
+        mon.clear()
+        -- Center print "THIS MONITOR"
+        local width, height = mon.getSize()
+        local text = "THIS MONITOR"
+        local textWidth = #text
+
+        if textWidth > width then
+            local textLines = { "THIS", "MONITOR" }
+            for i, line in ipairs(textLines) do
+                local x = math.floor((width - #line) / 2) + 1
+                local y = math.floor(height / 2) + i - 1
+                mon.setCursorPos(x, y)
+                mon.write(line)
+            end
+        else
+            local x = math.floor((width - textWidth) / 2) + 1
+            local y = math.floor(height / 2) + 1
+            mon.setCursorPos(x, y)
+            mon.write(text)
+        end
+    end
+end
+
 function Configurator.Peripheral.Monitor.clearIdentifiers()
     local monitors = Configurator.Peripheral.getByType("monitor")
     if #monitors > 0 then
         for _, monitor in ipairs(monitors) do
             local mon = peripheral.wrap(monitor)
+            if debug.enabled and debug.outputMonitorName then
+                if monitor == debug.outputMonitorName then
+                    mon = nil
+                end
+            end
             if mon then
                 mon.setTextColor(colors.white)
                 mon.setBackgroundColor(colors.black)
@@ -329,111 +547,301 @@ function Configurator.Core.saveSettings(fields)
     settings.save(".settings")
 end
 
+Event = {}
+
 local modifiers = {
     ctrl = false
 }
-function Configurator.Core.run()
-    local fields = Configurator.fields
-    local keyTypeMap = Configurator.keyTypeMap
 
-    local selectedField = 1
-    local peripheralSelected = nil
-    local peripheralsList = nil
-    local editingPeripheral = false
-    local warning = nil
-
-    local width, height = term.getSize()
-    local leftWidth = math.floor(width * 0.6)
-    local rightWidth = width - leftWidth - 3
-    local rightY = 2
-    local rightHeight = height - 3
-
-    Configurator.Core.loadSettings(fields)
-
-    while true do
-        Configurator.UI.draw(fields, selectedField, peripheralsList, peripheralSelected, warning)
-        -- Clear warning only if user moves away from the warning field
-        if warningFieldIndex and selectedField ~= warningFieldIndex then
-            warning = nil
-            warningFieldIndex = nil
+function Event.onKeyDown(key)
+    if key == keys.leftCtrl or key == keys.rightCtrl then
+        modifiers.ctrl = true
+    elseif key == keys.s and modifiers.ctrl then
+        Event.onSave()
+    elseif (key == keys.e or key == keys.t) and modifiers.ctrl then
+        Event.onExit()
+    elseif Configurator.editingPeripheral then
+        if key == keys.up then
+            Event.onPeripheralUp()
+        elseif key == keys.down then
+            Event.onPeripheralDown()
+        elseif key == keys.enter then
+            Event.onPeripheralSelect()
+        elseif key == keys.left or key == keys.backspace or key == keys.escape then
+            Event.onPeripheralCancel()
         end
+    else
+        if key == keys.up then
+            Event.onCursorUp()
+        elseif key == keys.down then
+            Event.onCursorDown()
+        elseif key == keys.enter or key == keys.right then
+            Event.onSelect()
+        elseif key == keys.escape then
+            Event.onExit()
+        end
+    end
+end
 
-        local event, param1, param2, param3 = os.pullEvent()
+function Event.onKeyUp(key)
+    if key == keys.leftCtrl or key == keys.rightCtrl then
+        modifiers.ctrl = false
+    end
+end
 
-        if event == "key" then
-            local key = param1
+-- =========================
+-- = UI Intent Handlers =
+-- =========================
 
-            if key == keys.leftCtrl or key == keys.rightCtrl then
-                modifiers.ctrl = true
-            elseif key == keys.s and modifiers.ctrl then
-                Configurator.Core.saveSettings(fields)
-                warning = "Settings saved! CTRL+E to exit."
-            elseif key == keys.e and modifiers.ctrl then
-                break -- Exit configuration
-            elseif editingPeripheral then
-                if key == keys.up then
-                    peripheralSelected = peripheralSelected > 1 and peripheralSelected - 1 or #peripheralsList
-                elseif key == keys.down then
-                    peripheralSelected = peripheralSelected < #peripheralsList and peripheralSelected + 1 or 1
-                elseif key == keys.enter then
-                    if peripheralSelected and peripheralsList[peripheralSelected] then
-                        local fieldKey = fields[selectedField].key
-                        Configurator.settings[fieldKey] = peripheralsList[peripheralSelected]
-                        if keyTypeMap[fieldKey] == "monitor" then
-                            Configurator.Peripheral.Monitor.clearIdentifiers()
-                        end
-                    end
-                    editingPeripheral = false
-                    peripheralsList = nil
-                    peripheralSelected = nil
-                elseif key == keys.left or key == keys.backspace then
-                    editingPeripheral = false
-                    peripheralsList = nil
-                    peripheralSelected = nil
-                else
-                    warning = "Use Arrows + Enter. CTRL+S to save and exit."
-                end
-            else
-                if key == keys.up then
-                    selectedField = selectedField > 1 and selectedField - 1 or #fields
-                elseif key == keys.down then
-                    selectedField = selectedField < #fields and selectedField + 1 or 1
-                elseif key == keys.enter then
-                    local field = fields[selectedField]
-                    local keyType = keyTypeMap[field.key]
-                    if keyType then
-                        peripheralsList = Configurator.Peripheral.getByType(keyType)
-                        if #peripheralsList > 0 then
-                            editingPeripheral = true
-                            if keyType == "monitor" then
-                                Configurator.Peripheral.Monitor.writeIdentifier()
-                            end
-                            peripheralSelected = 1
-                        else
-                            warning = "No peripherals found for " .. keyType
-                            warningFieldIndex = selectedField
-                        end
-                    else
-                        local fieldType = field.type or "string"
-                        local input = Configurator.Input.inputText("Enter " .. field.label, leftWidth - 2, fieldType)
-                        if input and input ~= "" then
-                            Configurator.settings[field.key] = input
-                        end
-                    end
-                elseif key == keys.escape then
-                    break
-                end
+function Event.onCursorUp()
+    local fields = Configurator.fields
+    Configurator.selectedField = Configurator.selectedField > 1 and Configurator.selectedField - 1 or #fields
+end
+
+function Event.onCursorDown()
+    local fields = Configurator.fields
+    Configurator.selectedField = Configurator.selectedField < #fields and Configurator.selectedField + 1 or 1
+end
+
+function Event.onPeripheralUp()
+    local selected = Configurator.peripheralsList[Configurator.peripheralSelected]
+    local field = Configurator.fields[Configurator.selectedField]
+    local fieldKey = field.key
+    local pType = Configurator.keyTypeMap[fieldKey]
+    if pType == "monitor" then
+        Configurator.Peripheral.Monitor.writeIdentifier()
+    end
+
+    Configurator.peripheralSelected = Configurator.peripheralSelected > 1 and Configurator.peripheralSelected - 1 or
+        #Configurator.peripheralsList
+
+    selected = Configurator.peripheralsList[Configurator.peripheralSelected]
+    field = Configurator.fields[Configurator.selectedField]
+    fieldKey = field.key
+    pType = Configurator.keyTypeMap[fieldKey]
+    if pType == "monitor" then
+        Configurator.Peripheral.Monitor.writeSelection(selected)
+    end
+end
+
+function Event.onPeripheralDown()
+    local selected = Configurator.peripheralsList[Configurator.peripheralSelected]
+    local field = Configurator.fields[Configurator.selectedField]
+    local fieldKey = field.key
+    local pType = Configurator.keyTypeMap[fieldKey]
+    if pType == "monitor" then
+        Configurator.Peripheral.Monitor.writeIdentifier()
+    end
+    Configurator.peripheralSelected = Configurator.peripheralSelected < #Configurator.peripheralsList and
+        Configurator.peripheralSelected + 1 or 1
+
+    selected = Configurator.peripheralsList[Configurator.peripheralSelected]
+    field = Configurator.fields[Configurator.selectedField]
+    fieldKey = field.key
+    pType = Configurator.keyTypeMap[fieldKey]
+    if pType == "monitor" then
+        Configurator.Peripheral.Monitor.writeSelection(selected)
+    end
+end
+
+function Event.onMouseDown(button, x, y)
+    local leftWidth = Configurator.leftWidth
+    local fields = Configurator.fields
+    local selectedField = Configurator.selectedField
+    local rightX = leftWidth + 2
+    local listStartY = Configurator.rightY
+
+    if not Configurator.editingPeripheral then
+        -- Clicked in the field list
+        debug("Mouse click at", x, y, "on field list")
+        if y >= 2 and y <= #fields + 1 and x <= leftWidth - 2 then
+            Configurator.selectedField = y - 1
+            Event.onSelect() -- Simulate pressing Enter on the field
+        elseif x >= rightX and x < rightX + Configurator.rightWidth and y >= listStartY then
+            debug("Action impossible")
+        end
+    else
+        debug("Mouse click at", x, y, "on peripheral selection")
+        -- Clicked inside peripheral selection pane
+        if x >= rightX and x < rightX + Configurator.rightWidth and y >= listStartY then
+            local relY = y - listStartY + 1
+            if relY >= 1 and relY <= #Configurator.peripheralsList then
+                Configurator.peripheralSelected = relY
+                Event.onPeripheralSelect()
             end
-        elseif event == "key_up" then
-            local key = param1
-            if key == keys.leftCtrl or key == keys.rightCtrl then
-                modifiers.ctrl = false
+        elseif x <= leftWidth - 2 then
+            debug("Returning without action.")
+            -- Clicked outside the peripheral selection area, cancel editing
+            Event.onPeripheralCancel()
+        end
+    end
+end
+
+function Event.onMouseUp(button, x, y)
+    -- Reserved for future use
+    -- You could add logic here for click-release patterns or button state
+end
+
+function Event.onMouseDrag(button, x, y)
+    if Configurator.editingPeripheral then
+        local rightX = Configurator.leftWidth + 2
+        local listStartY = Configurator.rightY
+        local listEndY = listStartY + Configurator.rightHeight - 1
+
+        if x >= rightX and x < rightX + Configurator.rightWidth and y >= listStartY and y <= listEndY then
+            local relY = y - listStartY + 1
+            if relY >= 1 and relY <= #Configurator.peripheralsList then
+                Configurator.peripheralSelected = relY
             end
         end
     end
+end
 
+function Event.onMouseScroll(direction, x, y)
+    -- direction: 1 = down, -1 = up
+    if Configurator.editingPeripheral and Configurator.peripheralsList then
+        local max = #Configurator.peripheralsList
+        if direction == 1 then
+            -- scroll down
+            Event.onPeripheralDown()
+        elseif direction == -1 then
+            -- scroll up
+            Event.onPeripheralUp()
+        end
+    else
+        -- Optionally scroll fields list (if you later want to support scrolling fields visually)
+        local max = #Configurator.fields
+        if direction == 1 then
+            -- scroll down
+            Event.onCursorDown()
+        elseif direction == -1 then
+            -- scroll up
+            Event.onCursorUp()
+        end
+    end
+end
+
+function Event.onPeripheralSelect()
+    debug("Peripheral selected:", Configurator.peripheralSelected)
+    local selected = Configurator.peripheralsList[Configurator.peripheralSelected]
+    local field = Configurator.fields[Configurator.selectedField]
+    local fieldKey = field.key
+    Configurator.settings[fieldKey] = selected
+
+    debug("Setting", fieldKey, "to", selected)
+
+    if Configurator.keyTypeMap[fieldKey] == "monitor" then
+        Configurator.Peripheral.Monitor.clearIdentifiers()
+    end
+
+    Configurator.editingPeripheral = false
+    Configurator.peripheralsList = nil
+    Configurator.peripheralSelected = nil
+end
+
+function Event.onPeripheralCancel()
+    Configurator.editingPeripheral = false
+    Configurator.peripheralsList = nil
+    Configurator.peripheralSelected = nil
+end
+
+function Event.onSelect()
+    local field = Configurator.fields[Configurator.selectedField]
+    local keyType = Configurator.keyTypeMap[field.key]
+
+    if keyType then
+        local list = Configurator.Peripheral.getByType(keyType)
+        if #list > 0 then
+            Configurator.editingPeripheral = true
+            Configurator.peripheralsList = list
+            Configurator.peripheralSelected = 1
+            Configurator.warning = nil
+            if keyType == "monitor" then
+                Configurator.Peripheral.Monitor.writeIdentifier()
+            end
+        else
+            Configurator.warning = "No peripherals found for " .. keyType
+            Configurator.warningFieldIndex = Configurator.selectedField
+        end
+    else
+        local input = Configurator.Input.inputText("Enter " .. field.label, math.floor(term.getSize() * 0.6) - 2,
+            field.type or "string")
+        if input and input ~= "" then
+            Configurator.settings[field.key] = input
+        end
+    end
+end
+
+function Event.onSave()
+    Configurator.Core.saveSettings(Configurator.fields)
+    Configurator.warning = "Settings saved! CTRL+E to exit."
+end
+
+function Event.onExit()
+    Configurator.shouldExit = true
+end
+
+function Configurator.Core.run()
+    local fields = Configurator.fields
+
+    -- Initialize Configurator state
+    Configurator.selectedField = 1
+    Configurator.editingPeripheral = false
+    Configurator.peripheralSelected = nil
+    Configurator.peripheralsList = nil
+    Configurator.warning = nil
+    Configurator.warningFieldIndex = nil
+    Configurator.shouldExit = false
+
+    local width, height = term.getSize()
+    Configurator.leftWidth = math.floor(width * 0.6)
+    Configurator.rightWidth = width - Configurator.leftWidth - 3
+    Configurator.rightY = 3
+    Configurator.rightHeight = height - 3
+
+    -- Load settings
+    Configurator.Core.loadSettings(fields)
+
+    -- Main event loop
+    while not Configurator.shouldExit do
+        -- Draw UI
+        Configurator.UI.draw(
+            fields,
+            Configurator.selectedField,
+            Configurator.peripheralsList,
+            Configurator.peripheralSelected,
+            Configurator.warning
+        )
+
+        -- Clear warning if cursor moved away
+        if Configurator.warningFieldIndex and Configurator.selectedField ~= Configurator.warningFieldIndex then
+            Configurator.warning = nil
+            Configurator.warningFieldIndex = nil
+        end
+
+        -- Wait for event
+        local event, p1, p2, p3 = os.pullEvent()
+
+        if event == "key" then
+            Event.onKeyDown(p1)
+        elseif event == "key_up" then
+            Event.onKeyUp(p1)
+        elseif event == "mouse_click" then
+            Event.onMouseDown(p1, p2, p3)
+        elseif event == "mouse_up" then
+            Event.onMouseUp(p1, p2, p3)
+        elseif event == "mouse_drag" then
+            Event.onMouseDrag(p1, p2, p3)
+        elseif event == "mouse_scroll" then
+            Event.onMouseScroll(p1, p2, p3)
+        end
+    end
+
+    -- Save settings and exit
     Configurator.Core.saveSettings(fields)
     Configurator.ScreenUtils.resetScreen()
+    -- clear identifiers
+    Configurator.Peripheral.Monitor.clearIdentifiers()
     print("Configuration saved.")
 end
 

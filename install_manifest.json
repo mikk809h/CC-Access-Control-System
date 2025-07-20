@@ -1,9 +1,9 @@
 {
     "versions": {
         "installer": "0.0.2",
-        "system": "0.1.12",
+        "system": "0.2.1",
         "core": "0.1.2",
-        "airlock": "0.2.0",
+        "airlock": "0.3.0",
         "control-server": "0.0.5",
         "shared": "0.0.1"
     },
@@ -66,8 +66,8 @@
         ]
     },
     "sizes": {
-        "system": 14474,
-        "airlock": 48536,
+        "system": 14584,
+        "airlock": 63080,
         "control-server": 315875,
         "core": 28703,
         "shared": 802
