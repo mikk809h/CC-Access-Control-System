@@ -1,7 +1,7 @@
 {
     "versions": {
         "installer": "0.0.2",
-        "system": "0.2.2",
+        "system": "0.2.3",
         "core": "0.1.2",
         "airlock": "0.3.2",
         "control-server": "0.0.5",
@@ -9,7 +9,6 @@
     },
     "files": {
         "system": [
-            ".eeeee",
             "README.md",
             "configure.lua",
             "initialize.lua",
@@ -67,7 +66,7 @@
         ]
     },
     "sizes": {
-        "system": 15112,
+        "system": 14581,
         "airlock": 57732,
         "control-server": 315875,
         "core": 28703,
