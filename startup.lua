@@ -5,37 +5,17 @@ term.clear()
 term.setCursorPos(1, 1)
 
 -- === Peripheral Simulation ===
-local function setupTestPeripherals()
-    if not periphemu or not fs.exists("airlock/startup.lua") then return end
 
-    local peripherals = {
-        AIRLOCK = {
-            SCREEN = { type = "monitor", id = 3, blockSize = { width = 1, height = 1 } },
-            KEYCARD = { type = "drive", id = 1 },
-        },
-        ENTRANCE = {
-            SCREEN = { type = "monitor", id = 1, blockSize = { width = 3, height = 2 } },
-            KEYCARD = { type = "drive", id = 2 },
-        },
-        INFO = {
-            SCREEN = { type = "monitor", id = 2, blockSize = { width = 3, height = 3 } },
-        },
-        OTHER = {
-            SPEAKER = { type = "speaker", id = "right" },
-            MODEM = { type = "modem", id = "left" },
-        },
-    }
+if fs.exists("core/peripherals.lua") then
+    print("Loading peripheral simulation...")
+    local peripherals = require("core.peripherals")
 
-    for _, devices in pairs(peripherals) do
-        for _, device in pairs(devices) do
-            periphemu.create(device.id, device.type)
-            if device.type == "monitor" and device.blockSize then
-                local monName = "monitor_" .. tostring(device.id)
-                peripheral.call(monName, "setBlockSize", device.blockSize.width, device.blockSize.height)
-            end
-        end
+    local mode = peripherals.detectTestMode()
+    if mode then
+        peripherals.setup(mode)
     end
 end
+
 
 -- === Auto Update System ===
 local function performAutoUpdate()
@@ -66,6 +46,10 @@ local components = {
 }
 
 local function loadLastComponent()
+    if fs.exists("__DEV__") then
+        print("Running in development mode, skipping last component load.")
+        return nil
+    end
     if not fs.exists(".cache") then
         fs.makeDir(".cache")
     end
@@ -116,7 +100,6 @@ local function promptComponentSelection(available)
 end
 
 -- === Main Execution ===
-setupTestPeripherals()
 performAutoUpdate()
 
 local available = listAvailableComponents()
