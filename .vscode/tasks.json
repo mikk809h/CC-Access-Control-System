@@ -8,6 +8,22 @@
             "group": "build",
             "problemMatcher": [],
             "detail": "Auto-update package.json with all repo files (excluding .gitignore)"
+        },
+        {
+            "label": "Sync Dir",
+            "type": "shell",
+            "command": "python .vscode/tasks/sync-dir.py --all --yes",
+            "group": "build",
+            "problemMatcher": [],
+            "presentation": {
+                "echo": true,
+                "reveal": "silent",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": true,
+                "clear": false
+            },
+            "detail": "Sync the current directory with the remote repository"
         }
     ],
     "inputs": [

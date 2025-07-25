@@ -7,3 +7,5 @@ logs
 users.txt
 .cache
 __DEV__
+data
+test_data
