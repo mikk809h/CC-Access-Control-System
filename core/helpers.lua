@@ -12,6 +12,18 @@ function helpers.split(str, sep)
     return t
 end
 
+function helpers.isStringPresentInTable(tbl, str)
+    if type(tbl) ~= "table" then
+        return false
+    end
+    for _, v in pairs(tbl) do
+        if v == str then
+            return true
+        end
+    end
+    return false
+end
+
 --- Counts elements in a table.
 -- If predicate is provided, counts only elements where predicate(value, key) returns true.
 ---@param tbl table<any, any> Table to count elements from

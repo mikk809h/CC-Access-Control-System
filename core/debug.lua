@@ -8,10 +8,11 @@ local debug = {}
 ---@param indent number? Current indentation level (used internally)
 ---@param maxDepth number? Maximum depth to recurse into nested tables
 function debug.dump(tbl, indent, maxDepth)
+    maxDepth = maxDepth or 6
+    indent = indent or 0
     if maxDepth and indent >= maxDepth then
         return "MAX_DEPTH"
     end
-    indent = indent or 0
     local prefix = string.rep("  ", indent)
 
     if type(tbl) ~= "table" then

@@ -9,6 +9,7 @@ local log = {}
 log.config = {
     logToFile = true,
     logFilePath = "logs/log.txt",
+    print = true,
 
 }
 
@@ -113,7 +114,7 @@ local function print(target, ...)
     return nLinesPrinted
 end
 
-local function appendLog(...)
+local function appendLog(level, ...)
     if not log.config.logToFile then
         return
     end
@@ -125,12 +126,24 @@ local function appendLog(...)
 
     local logFile = fs.open(log.config.logFilePath, "a")
     if logFile then
-        logFile.write(getTimestamp() .. " ")
+        logFile.write(getTimestamp() .. " [" .. level .. "] ")
         -- print tables recursively
         local args = { ... }
         for i, v in ipairs(args) do
             if type(v) == "table" then
-                logFile.write(textutils.serialize(v))
+                if v[1] and v[2] then
+                    if type(v[1]) == "number" then
+                        if type(v[2]) ~= "table" then
+                            logFile.write(v[2])
+                        else
+                            logFile.write(textutils.serialize(v[2]))
+                        end
+                    else
+                        logFile.write(textutils.serialize(v))
+                    end
+                else
+                    logFile.write(textutils.serialize(v))
+                end
             else
                 logFile.write(tostring(v))
             end
@@ -149,7 +162,10 @@ end
 ---@param ... any
 local function coloredPrintToTarget(target, level, ...)
     local args = { ... }
-    appendLog(...)
+    appendLog(level, ...)
+    if not log.config.print then
+        return
+    end
     -- if target width is too small, do not include timestamp
     local w, _ = target.getSize()
     if w > 20 then
