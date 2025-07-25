@@ -1,44 +1,24 @@
+---@class UserModel
+---@field username string
+---@field level string
+---@field active boolean
+---@field _id string Optional: included in runtime, required by ModelInstance
+
 local Model = require("core.database.model")
+local log   = require("core.log")
 
 
-local User = Model.define("users.txt", "username", {
+---@type Model<UserModel>
+local User = Model.define("users", {
     "username", "level", "active"
 }, {
     username = function(v) return type(v) == "string" and #v > 0 end,
     level = function(v) return type(v) == "string" and v:match("^L%d+$") end,
     active = function(v) return v == true or v == false end
+}, {
+    logger = function(msg, ...)
+        -- log.info("User Model:", msg, ...)
+    end
 })
-
-local newUser = User:new({
-    username = "newuser",
-    level = "L30",
-    active = true
-})
-
-newUser:update({
-    username = "updateduser",
-    level = "L40",
-    active = false
-})
-
--- print(newUser:__tostring())
-
-newUser:delete()
-
-local newUser_original = User:new({
-    username = "newuser",
-    level = "L20",
-    active = true
-})
-
-newUser_original:delete()
-
--- -- QUERY PATTERN:
--- -- string | table ({ [key]: value }) | nil
-
--- User.find(QUERY_PATTERN) -- Example usage of find method
--- User.update(QUERY_PATTERN, { key1 = "value1", key2 = "value2" }) -- Example usage of update method
--- User.delete(QUERY_PATTERN) -- Example usage of delete method
-
 
 return User

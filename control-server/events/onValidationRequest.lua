@@ -1,14 +1,11 @@
-local log            = require "core.log"
-local State          = require('control-server.state')
-local User           = require('control-server.models.user')
-local debug          = require('core.debug')
-local helpers        = require('core.helpers')
+local log       = require "core.log"
+local State     = require('control-server.state')
+local User      = require('control-server.models.user')
+local debug     = require('core.debug')
+local helpers   = require('core.helpers')
+local AccessLog = require('control-server.access_log')
+local Airlocks  = require('control-server.models.airlocks')
 
-local requiredLevels = {
-    A1 = 10,
-    A2 = 20,
-    A3 = 30,
-}
 
 local function handleValidationRequest(msg)
     if not msg or msg.type ~= "validation_request" or not msg.identifier or msg.identifier == "" then
@@ -17,23 +14,21 @@ local function handleValidationRequest(msg)
 
     log.info("Validating ID: ", tostring(msg.identifier))
 
-    if State.status.lockdown then
-        return {
-            type = "validation_response",
-            status = "success",
-            action = "deny",
-            reason = "lockdown",
-            identifier = msg.identifier,
-            target = msg.source,
-        }
-    end
-
-    local usersFound = User:find(msg.identifier)
+    local usersFound = User:find({ username = msg.identifier })
     log.debug(usersFound)
 
     if not usersFound or #usersFound == 0 then
         log.warn("No user found for ID: ", msg.identifier)
+        AccessLog.append({
+            identifier = msg.identifier,
+            level = "N/A",
+            source = msg.source,
+            timestamp = os.time(),
+            action = "deny",
+            reason = "not_found",
+        })
         return {
+            __module = "airlock-cs",
             type = "validation_response",
             status = "success",
             action = "deny",
@@ -47,6 +42,7 @@ local function handleValidationRequest(msg)
     if #usersFound > 1 then
         log.warn("Multiple users found for ID: ", msg.identifier)
         return {
+            __module = "airlock-cs",
             type = "validation_response",
             status = "success",
             action = "deny",
@@ -55,73 +51,86 @@ local function handleValidationRequest(msg)
             target = msg.source,
         }
     end
+
     local user = usersFound[1]
 
-
-    local parts = helpers.split(msg.source or "", ".")
-    if #parts ~= 2 then
-        log.warn("Invalid source format: ", msg.source)
-        return {
-            type = "validation_response",
-            status = "error",
-            message = "Invalid source format",
-            identifier = msg.identifier,
-            target = msg.source,
-        }
-    end
-
-    local area, direction = parts[1], parts[2]
-    if not string.match(area, "^A%d+$") or (direction ~= "Entrance" and direction ~= "Exit") then
-        log.warn("Invalid source structure: ", msg.source)
-        return {
-            type = "validation_response",
-            status = "error",
-            message = "Invalid source structure",
-            identifier = msg.identifier,
-            target = msg.source,
-        }
-    end
-
-    -- Everyone can EXIT.
-    if direction == "Exit" then
-        log.info("Access granted for exit to user ", msg.identifier)
-        return {
-            type = "validation_response",
-            status = "success",
-            action = "allow",
-            identifier = msg.identifier,
-            target = msg.source,
-        }
-    end
     local userLevel = tonumber(user.level:match("L(%d+)")) -- e.g., "L10" → 10
-    local requiredLevel = requiredLevels[area]
 
-    if not requiredLevel then
-        log.warn("Unknown area: ", area)
+    local foundAirlock = Airlocks:find(msg.source)
+    if not foundAirlock or #foundAirlock == 0 then
+        log.warn("No airlock found for source: ", msg.source)
+        AccessLog.append({
+            identifier = msg.identifier,
+            level = userLevel,
+            source = msg.source,
+            timestamp = os.time(),
+            action = "deny",
+            reason = "airlock_not_found",
+        })
         return {
+            __module = "airlock-cs",
             type = "validation_response",
             status = "error",
-            message = "Unknown area",
+            message = "Airlock not found",
             identifier = msg.identifier,
             target = msg.source,
         }
     end
+    local relatedAirlock = foundAirlock[1]
 
-    if userLevel > requiredLevel then
-        log.warn("Access denied for user ", msg.identifier, " to ", area, ": insufficient level")
-        return {
-            type = "validation_response",
-            status = "success",
-            action = "deny",
-            reason = "insufficient_clearance",
-            identifier = msg.identifier,
-            target = msg.source,
-        }
+    if relatedAirlock.state == "locked" then
+        log.warn("System is in lockdown mode, denying access for ID: ", msg.identifier)
+        if userLevel <= 10 then
+            log.warn("User ", msg.identifier, " has high clearance, and overriding lockdown")
+            AccessLog.append({
+                identifier = msg.identifier,
+                level = userLevel,
+                source = msg.source,
+                timestamp = os.time(),
+                action = "allow",
+                reason = "lockdown_override",
+            })
+            return {
+                __module = "airlock-cs",
+                type = "validation_response",
+                status = "success",
+                action = "allow",
+                reason = "lockdown_override",
+                identifier = msg.identifier,
+                target = msg.source,
+            }
+        else
+            AccessLog.append({
+                identifier = msg.identifier,
+                level = userLevel,
+                source = msg.source,
+                timestamp = os.time(),
+                action = "deny",
+                reason = "lockdown",
+            })
+            return {
+                __module = "airlock-cs",
+                type = "validation_response",
+                status = "success",
+                action = "deny",
+                reason = "lockdown",
+                identifier = msg.identifier,
+                target = msg.source,
+            }
+        end
     end
 
     -- Passed level check
-    log.debug("Access granted to user ", msg.identifier, " for ", area)
+    log.debug("Access granted to user ", msg.identifier, " for ")
+    AccessLog.append({
+        identifier = msg.identifier,
+        level = userLevel,
+        source = msg.source,
+        timestamp = os.time(),
+        action = "allow",
+    })
     return {
+        __module = "airlock-cs",
         type = "validation_response",
         status = "success",
         action = "allow",
@@ -130,11 +139,7 @@ local function handleValidationRequest(msg)
     }
 end
 
-log.info("Initializing onValidationRequest handler")
-handleValidationRequest({
-    type = "validation_request",
-    identifier = "test_user",
-    source = "A1.Entrance"
-})
+
+-- local test = require('control-server.events.onValidationRequestTest')()
 
 return handleValidationRequest
