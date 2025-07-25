@@ -15,19 +15,19 @@ Configurator.keyTypeMap = {
 }
 
 Configurator.fields = {
-    { key = "Identifier",                 label = "Identifier",       default = "A" },
-    { key = "Name",                       label = "Name",             default = "Airlock Entrance" },
-    { key = "component.entrance.door",    label = "Entrance Door",    default = "redstoneIntegrator_6" },
-    { key = "component.entrance.keycard", label = "Entrance Keycard", default = "drive_4" },
-    { key = "component.entrance.screen",  label = "Entrance Screen",  default = "monitor_3" },
-    { key = "component.exit.door",        label = "Exit Door",        default = "redstoneIntegrator_5" },
-    { key = "component.airlock.keycard",  label = "Airlock Keycard",  default = "drive_1" },
-    { key = "component.airlock.screen",   label = "Airlock Screen",   default = "monitor_1" },
-    { key = "component.info.screen",      label = "Info Screen",      default = "monitor_2" },
-    { key = "component.other.speaker",    label = "Speaker",          default = "right" },
-    { key = "component.other.modem",      label = "Modem",            default = "left" },
-    { key = "openingDelay",               label = "Opening Delay",    default = 2.5,                   type = "float" },
-    { key = "autoCloseTime",              label = "Auto Close Time",  default = 10,                    type = "float" },
+    { key = "Identifier",                 label = "Identifier",      default = "A" },
+    { key = "Name",                       label = "Name",            default = "Airlock Entrance" },
+    { key = "component.entrance.door",    label = "Entry Door",      default = "redstoneIntegrator_6" },
+    { key = "component.entrance.keycard", label = "Entry Keycard",   default = "drive_4" },
+    { key = "component.entrance.screen",  label = "Entry Screen",    default = "monitor_3" },
+    { key = "component.exit.door",        label = "Exit Door",       default = "redstoneIntegrator_5" },
+    { key = "component.airlock.keycard",  label = "Airlock Keycard", default = "drive_1" },
+    { key = "component.airlock.screen",   label = "Airlock Screen",  default = "monitor_1" },
+    { key = "component.info.screen",      label = "Info Screen",     default = "monitor_2" },
+    { key = "component.other.speaker",    label = "Speaker",         default = "right" },
+    { key = "component.other.modem",      label = "Modem",           default = "left" },
+    { key = "openingDelay",               label = "Opening Delay",   default = 2.5,                   type = "float" },
+    { key = "autoCloseTime",              label = "Auto Close Time", default = 10,                    type = "float" },
 }
 
 Configurator.settings = {}
@@ -52,10 +52,16 @@ function Configurator.ScreenUtils.drawField(x, y, width, label, value, selected)
         term.setTextColor(colors.white)
     end
 
-    local display = string.format(" %s: %s", label, tostring(value))
-    if #display > width then
-        display = display:sub(1, width)
+    local labelText = " " .. label .. ": "
+    local labelWidth = #labelText
+    local valStr = tostring(value)
+    local maxValueWidth = width - labelWidth
+
+    if #valStr > maxValueWidth then
+        valStr = valStr:sub(#valStr - maxValueWidth + 1)
     end
+
+    local display = labelText .. valStr
     term.write(display .. string.rep(" ", width - #display))
 end
 
@@ -72,10 +78,10 @@ function Configurator.ScreenUtils.drawPeripherals(x, y, width, height, list, sel
             end
             local name = list[i]
             local display = name
-            if #display > width then
-                display = display:sub(1, width)
+            if #name > width then
+                name = name:sub(#name - width + 1)
             end
-            term.write(display .. string.rep(" ", width - #display))
+            term.write(name .. string.rep(" ", width - #name))
         else
             -- Clear empty lines
             term.setBackgroundColor(colors.black)
@@ -146,7 +152,83 @@ function Configurator.Peripheral.getByType(typeName)
     return results
 end
 
+-- Visualizer registry
+Configurator.Peripheral.Visualizers = {}
+
+function Configurator.Peripheral.registerVisualizer(typeName, onSelect, onDeselect)
+    Configurator.Peripheral.Visualizers[typeName] = {
+        onSelect = onSelect,
+        onDeselect = onDeselect
+    }
+end
+
+-- Monitor Visualizer
 Configurator.Peripheral.Monitor = {}
+
+function Configurator.Peripheral.Monitor.writeIdentifier()
+    for _, monitor in ipairs(Configurator.Peripheral.getByType("monitor")) do
+        local mon = peripheral.wrap(monitor)
+        if mon then
+            mon.setTextScale(mon.getSize() < 7 and 0.5 or 1)
+            mon.setBackgroundColor(colors.gray)
+            mon.setTextColor(colors.white)
+            mon.clear()
+            mon.setCursorPos(1, 1)
+            mon.write(monitor)
+        end
+    end
+end
+
+function Configurator.Peripheral.Monitor.writeSelection(name)
+    local mon = peripheral.wrap(name)
+    if mon then
+        mon.setTextScale(1)
+        mon.setBackgroundColor(colors.green)
+        mon.setTextColor(colors.black)
+        mon.clear()
+        local w, h = mon.getSize()
+        local text = "THIS MONITOR"
+        local x = math.floor((w - #text) / 2) + 1
+        local y = math.floor(h / 2) + 1
+        mon.setCursorPos(x, y)
+        mon.write(text)
+    end
+end
+
+function Configurator.Peripheral.Monitor.clearIdentifiers()
+    for _, monitor in ipairs(Configurator.Peripheral.getByType("monitor")) do
+        local mon = peripheral.wrap(monitor)
+        if mon then
+            mon.setBackgroundColor(colors.black)
+            mon.setTextColor(colors.white)
+            mon.setTextScale(1)
+            mon.clear()
+        end
+    end
+end
+
+Configurator.Peripheral.registerVisualizer("monitor",
+    Configurator.Peripheral.Monitor.writeSelection,
+    Configurator.Peripheral.Monitor.writeIdentifier
+)
+
+-- Redstone Integrator Visualizer
+Configurator.Peripheral.registerVisualizer("redstoneIntegrator",
+    function(name)
+        local p = peripheral.wrap(name)
+        if not p then return end
+        local sides = { "top", "bottom", "left", "right", "front", "back" }
+        for _, side in ipairs(sides) do p.setOutput(side, true) end
+        sleep(0.2)
+        for _, side in ipairs(sides) do p.setOutput(side, false) end
+    end,
+    function(name)
+        local p = peripheral.wrap(name)
+        if not p then return end
+        local sides = { "top", "bottom", "left", "right", "front", "back" }
+        for _, side in ipairs(sides) do p.setOutput(side, false) end
+    end
+)
 
 function Configurator.Peripheral.Monitor.writeCFGMode()
     local monitors = Configurator.Peripheral.getByType("monitor")
@@ -164,78 +246,6 @@ function Configurator.Peripheral.Monitor.writeCFGMode()
                 mon.setCursorPos(2, 4)
                 mon.setTextColor(colors.gray)
                 mon.write(monitor)
-            end
-        end
-    end
-end
-
-function Configurator.Peripheral.Monitor.writeIdentifier()
-    local monitors = Configurator.Peripheral.getByType("monitor")
-
-    local minimumWidth = #"monitor_XX"
-    if #monitors > 0 then
-        for i, monitor in ipairs(monitors) do
-            local mon = peripheral.wrap(monitor)
-            if mon then
-                local currentScale = mon.getTextScale()
-                if currentScale ~= 1 then
-                    mon.setTextScale(1)
-                end
-                local size = { mon.getSize() }
-                if size[1] < minimumWidth then
-                    mon.setTextScale(0.5)
-                else
-                    mon.setTextScale(1)
-                end
-                mon.setBackgroundColor(colors.gray)
-                mon.setTextColor(colors.white)
-                mon.clear()
-                mon.setCursorPos(1, 1)
-                mon.write(monitor)
-            end
-        end
-    end
-end
-
-function Configurator.Peripheral.Monitor.writeSelection(selected)
-    local mon = peripheral.wrap(selected)
-    if mon then
-        mon.setBackgroundColor(colors.green)
-        mon.setTextColor(colors.black)
-        mon.setTextScale(1)
-        mon.clear()
-        -- Center print "THIS MONITOR"
-        local width, height = mon.getSize()
-        local text = "THIS MONITOR"
-        local textWidth = #text
-
-        if textWidth > width then
-            local textLines = { "THIS", "MONITOR" }
-            for i, line in ipairs(textLines) do
-                local x = math.floor((width - #line) / 2) + 1
-                local y = math.floor(height / 2) + i - 1
-                mon.setCursorPos(x, y)
-                mon.write(line)
-            end
-        else
-            local x = math.floor((width - textWidth) / 2) + 1
-            local y = math.floor(height / 2) + 1
-            mon.setCursorPos(x, y)
-            mon.write(text)
-        end
-    end
-end
-
-function Configurator.Peripheral.Monitor.clearIdentifiers()
-    local monitors = Configurator.Peripheral.getByType("monitor")
-    if #monitors > 0 then
-        for _, monitor in ipairs(monitors) do
-            local mon = peripheral.wrap(monitor)
-            if mon then
-                mon.setTextColor(colors.white)
-                mon.setBackgroundColor(colors.black)
-                mon.setTextScale(1)
-                mon.clear()
             end
         end
     end
@@ -347,7 +357,7 @@ function Configurator.UI.draw(fields, selectedFieldIndex, peripherals, periphera
         term.setCursorPos(rightX, rightY)
         term.setTextColor(colors.yellow)
         term.write("Select:" .. string.rep(" ", rightWidth - 18))
-        Configurator.ScreenUtils.drawPeripherals(rightX, rightY + 1, rightWidth, rightHeight - 5, peripherals,
+        Configurator.ScreenUtils.drawPeripherals(rightX, rightY + 1, rightWidth + 1, rightHeight - 5, peripherals,
             peripheralSelectedIndex)
     else
         -- Clear right pane below title
@@ -437,43 +447,44 @@ function Event.onCursorDown()
 end
 
 function Event.onPeripheralUp()
-    local selected = Configurator.peripheralsList[Configurator.peripheralSelected]
     local field = Configurator.fields[Configurator.selectedField]
     local fieldKey = field.key
     local pType = Configurator.keyTypeMap[fieldKey]
-    if pType == "monitor" then
-        Configurator.Peripheral.Monitor.writeIdentifier()
+
+    local oldPeripheral = Configurator.peripheralsList[Configurator.peripheralSelected]
+    local visualizer = Configurator.Peripheral.Visualizers[pType]
+    if visualizer and visualizer.onDeselect then
+        visualizer.onDeselect(oldPeripheral)
     end
 
-    Configurator.peripheralSelected = Configurator.peripheralSelected > 1 and Configurator.peripheralSelected - 1 or
-        #Configurator.peripheralsList
+    Configurator.peripheralSelected = Configurator.peripheralSelected > 1
+        and Configurator.peripheralSelected - 1
+        or #Configurator.peripheralsList
 
-    selected = Configurator.peripheralsList[Configurator.peripheralSelected]
-    field = Configurator.fields[Configurator.selectedField]
-    fieldKey = field.key
-    pType = Configurator.keyTypeMap[fieldKey]
-    if pType == "monitor" then
-        Configurator.Peripheral.Monitor.writeSelection(selected)
+    local newPeripheral = Configurator.peripheralsList[Configurator.peripheralSelected]
+    if visualizer and visualizer.onSelect then
+        visualizer.onSelect(newPeripheral)
     end
 end
 
 function Event.onPeripheralDown()
-    local selected = Configurator.peripheralsList[Configurator.peripheralSelected]
     local field = Configurator.fields[Configurator.selectedField]
     local fieldKey = field.key
     local pType = Configurator.keyTypeMap[fieldKey]
-    if pType == "monitor" then
-        Configurator.Peripheral.Monitor.writeIdentifier()
-    end
-    Configurator.peripheralSelected = Configurator.peripheralSelected < #Configurator.peripheralsList and
-        Configurator.peripheralSelected + 1 or 1
 
-    selected = Configurator.peripheralsList[Configurator.peripheralSelected]
-    field = Configurator.fields[Configurator.selectedField]
-    fieldKey = field.key
-    pType = Configurator.keyTypeMap[fieldKey]
-    if pType == "monitor" then
-        Configurator.Peripheral.Monitor.writeSelection(selected)
+    local oldPeripheral = Configurator.peripheralsList[Configurator.peripheralSelected]
+    local visualizer = Configurator.Peripheral.Visualizers[pType]
+    if visualizer and visualizer.onDeselect then
+        visualizer.onDeselect(oldPeripheral)
+    end
+
+    Configurator.peripheralSelected = Configurator.peripheralSelected < #Configurator.peripheralsList
+        and Configurator.peripheralSelected + 1
+        or 1
+
+    local newPeripheral = Configurator.peripheralsList[Configurator.peripheralSelected]
+    if visualizer and visualizer.onSelect then
+        visualizer.onSelect(newPeripheral)
     end
 end
 
@@ -552,11 +563,8 @@ function Event.onPeripheralSelect()
     local selected = Configurator.peripheralsList[Configurator.peripheralSelected]
     local field = Configurator.fields[Configurator.selectedField]
     local fieldKey = field.key
-    Configurator.settings[fieldKey] = selected
 
-    if Configurator.keyTypeMap[fieldKey] == "monitor" then
-        Configurator.Peripheral.Monitor.clearIdentifiers()
-    end
+    Configurator.settings[fieldKey] = selected
 
     Configurator.editingPeripheral = false
     Configurator.peripheralsList = nil
@@ -564,6 +572,16 @@ function Event.onPeripheralSelect()
 end
 
 function Event.onPeripheralCancel()
+    local field = Configurator.fields[Configurator.selectedField]
+    local fieldKey = field.key
+    local pType = Configurator.keyTypeMap[fieldKey]
+    local selected = Configurator.peripheralsList[Configurator.peripheralSelected]
+
+    local visualizer = Configurator.Peripheral.Visualizers[pType]
+    if visualizer and visualizer.onDeselect then
+        visualizer.onDeselect(selected)
+    end
+
     Configurator.editingPeripheral = false
     Configurator.peripheralsList = nil
     Configurator.peripheralSelected = nil
@@ -580,8 +598,10 @@ function Event.onSelect()
             Configurator.peripheralsList = list
             Configurator.peripheralSelected = 1
             Configurator.warning = nil
-            if keyType == "monitor" then
-                Configurator.Peripheral.Monitor.writeIdentifier()
+
+            local visualizer = Configurator.Peripheral.Visualizers[keyType]
+            if visualizer and visualizer.onSelect then
+                visualizer.onSelect(list[1])
             end
         else
             Configurator.warning = "No peripherals found for " .. keyType
@@ -665,8 +685,6 @@ function Configurator.run()
     -- Save settings and exit
     Configurator.Core.saveSettings(fields)
     Configurator.ScreenUtils.resetScreen()
-    -- clear identifiers
-    Configurator.Peripheral.Monitor.clearIdentifiers()
     print("Configuration saved.")
 
     Configurator.Peripheral.Monitor.clearIdentifiers()

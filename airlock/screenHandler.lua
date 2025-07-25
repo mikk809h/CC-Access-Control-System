@@ -1,7 +1,6 @@
 local Screens = {}
 local C = require("airlock.airlock").config
 local log = require("core.log")
-local debug = require("core.debug")
 
 Screens.__components = {}
 

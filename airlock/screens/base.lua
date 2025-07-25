@@ -18,7 +18,11 @@ BaseScreen.__index = BaseScreen
 ---@return BaseScreen|nil
 function BaseScreen:new(group, name)
     assert(group and name, "Missing group or name for BaseScreen")
-
+    assert(type(group) == "string" and type(name) == "string", "Group and name must be strings")
+    if not C.COMPONENTS or not C.COMPONENTS[group] or not C.COMPONENTS[group][name] then
+        log.error("Invalid group or name for BaseScreen: " .. tostring(group) .. "." .. tostring(name))
+        return nil
+    end
     local screenId = C.COMPONENTS[group] and C.COMPONENTS[group][name]
     if not screenId then
         log.error("Invalid screen ID: " .. tostring(group) .. "." .. tostring(name))

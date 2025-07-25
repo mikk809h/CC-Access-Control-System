@@ -1,5 +1,5 @@
 local BaseScreen = require("airlock.screens.base")
-local Status = require("airlock.state")
+local StateMachine = require("airlock.statemachine")
 local log = require("core.log")
 local debug = require("core.debug")
 local helpers = require("core.helpers")
@@ -12,9 +12,10 @@ local ignoreNextResize = false
 
 ---@param self BaseScreen
 function screen:setup()
-    if type(self.monitor) ~= "table" or not self.monitor.setCursorPos then
-        error("Invalid call to BaseScreen:setup — 'self' is not a screen instance.")
-    end
+    assert(type(self) == "table", "Invalid call to BaseScreen:setup — 'self' is not a screen instance.")
+    assert(type(self.monitor) == "table" and self.monitor.setCursorPos,
+        "Invalid call to BaseScreen:setup — 'self' is not a screen instance.")
+
     self:super()
     self.monitor.setTextScale(1)
 end
@@ -22,6 +23,9 @@ end
 ---@param self BaseScreen
 ---@param ctx table|nil
 function screen:update(ctx)
+    assert(type(self) == "table", "Invalid call to BaseScreen:setup — 'self' is not a screen instance.")
+    assert(type(self.monitor) == "table" and self.monitor.setCursorPos,
+        "Invalid call to BaseScreen:setup — 'self' is not a screen instance.")
     if ctx and ctx.type == "event" and ctx.name == "monitor_resize" then
         if ignoreNextResize then
             -- log.debug("Ignoring next resize event for info screen")
@@ -33,7 +37,7 @@ function screen:update(ctx)
         end
     end
     local w, h = self.monitor.getSize()
-    if Status.lockdown then
+    if StateMachine.current_state == "locked" then
         self:setColors(colors.white, colors.red)
         self:clear()
 
@@ -41,9 +45,9 @@ function screen:update(ctx)
         self:writeCentered(3, " Nuclear Facility", colors.white)
 
 
-        if Status.lockdownReason and Status.lockdownReason ~= "" then
+        if StateMachine.reason and StateMachine.reason ~= "" then
             self:writeCentered(math.floor(h / 2) - 1, "LOCKDOWN ACTIVE", colors.white)
-            self:writeCentered(math.floor(h / 2) + 1, Status.lockdownReason, colors.yellow)
+            self:writeCentered(math.floor(h / 2) + 1, StateMachine.reason, colors.yellow)
         else
             self:writeCentered(math.floor(h / 2), "LOCKDOWN ACTIVE", colors.white)
         end

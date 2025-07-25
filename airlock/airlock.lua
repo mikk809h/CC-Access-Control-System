@@ -5,7 +5,12 @@ local Airlock  = {}
 
 local config   = {}
 
+---@type boolean Whether the airlock control server is connnected or not
+Airlock.online = false
+---@type table Airlock configuration
 Airlock.config = config
+
+Airlock.id     = nil
 
 function Airlock.load_config()
     if not settings.load("/.settings") then return false end

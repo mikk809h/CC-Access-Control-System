@@ -1,15 +1,19 @@
 require("/initialize").initialize()
+local Constants        = require("core.constants")
+local Scheduler        = require("core.scheduler")
 
-local log           = require("core.log")
-local Init          = require("core.init")
-local Components    = require("core.components")
-local Audio         = require("core.audio")
-local Door          = require("airlock.door")
-local EventHandler  = require("airlock.eventHandler") -- require the new event handler
-local ScreenHandler = require("airlock.screenHandler")
-local Configurator  = require("airlock.configure")
+local log              = require("core.log")
+log.config.logFilePath = "logs/airlock.log"
 
-local Airlock       = require("airlock.airlock")
+local Init             = require("core.init")
+local Components       = require("core.components")
+local Audio            = require("core.audio")
+
+local EventHandler     = require("airlock.eventHandler") -- require the new event handler
+local ScreenHandler    = require("airlock.screenHandler")
+local Configurator     = require("airlock.configure")
+local StateMachine     = require("airlock.statemachine")
+local Airlock          = require("airlock.airlock")
 
 if not Airlock.load_config() then
     log.warn("Failed to load a valid configuration, attempting to reconfigure...")
@@ -29,8 +33,6 @@ end
 
 
 log.info("Initializing...")
-log.info("Version: 1")
-
 Init.ValidateComponents({
     ENTRANCE = { "KEYCARD", "DOOR", "SCREEN" },
     EXIT = { "DOOR" },
@@ -42,10 +44,39 @@ Init.ValidateComponents({
 local wrapped = Init.WrapComponents(Airlock.config.COMPONENTS)
 Components.SetWrapper(wrapped)
 
+StateMachine.subscribe("changing", function(newState, oldState)
+    log.info("State changing from " .. oldState .. " to " .. newState)
+    Components.callComponent(Airlock.config.COMPONENTS, "OTHER", "MODEM", "transmit", Constants.Ports.COMMAND_RESPONSE,
+        Constants.Ports.COMMAND, {
+            __module = "airlock",
+            type = "status",
+            source = Airlock.config.ID,
+            state = newState,
+        })
+end)
 ScreenHandler.init()
 
+
+StateMachine.subscribe("change", function(newState, oldState)
+    ScreenHandler.update({
+        type = "state_change"
+    })
+    log.info("State changed from " .. oldState .. " to " .. newState)
+    Components.callComponent(Airlock.config.COMPONENTS, "OTHER", "MODEM", "transmit", Constants.Ports.COMMAND_RESPONSE,
+        Constants.Ports.COMMAND, {
+            __module = "airlock",
+            type = "status",
+            source = Airlock.config.ID,
+            state = newState,
+        })
+end)
+
 parallel.waitForAny(
-    Audio.loop,
-    Door.loop,
-    EventHandler.runEventLoop -- replace your old modemEventLoop with this
+    Audio.createLoopInstance(function(method, ...)
+        local args = { ... }
+        Components.callComponent(Airlock.config.COMPONENTS, "OTHER", "SPEAKER", method, table.unpack(args))
+    end),
+    StateMachine.loop,
+    EventHandler.runEventLoop,
+    Scheduler.loop
 )

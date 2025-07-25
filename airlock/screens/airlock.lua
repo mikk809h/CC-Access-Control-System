@@ -1,5 +1,5 @@
 local BaseScreen = require("airlock.screens.base")
-local Status = require("airlock.state")
+local StateMachine = require("airlock.statemachine")
 local log = require("core.log")
 local C = require("airlock.airlock").config
 local helpers = require("core.helpers")
@@ -16,6 +16,7 @@ local prev = {
 
 --- override setup
 function screen:setup()
+    assert(type(self) == "table", "Invalid call to BaseScreen:setup — 'self' is not a screen instance.")
     if type(self.monitor) ~= "table" or not self.monitor.setCursorPos then
         error("Invalid call to BaseScreen:setup — 'self' is not a screen instance.")
     end
@@ -25,6 +26,13 @@ end
 
 ---@param ctx table|nil
 function screen:update(ctx)
+    assert(type(self) == "table", "Invalid call to BaseScreen:setup — 'self' is not a screen instance.")
+    assert(type(self.monitor) == "table" and self.monitor.setCursorPos,
+        "Invalid call to BaseScreen:setup — 'self' is not a screen instance.")
+
+    if type(self) ~= "table" then
+        error("Invalid call to BaseScreen:update — 'self' is not a screen instance.")
+    end
     if type(self.monitor) ~= "table" or not self.monitor.setCursorPos then
         error("Invalid call to BaseScreen:update — 'self' is not a screen instance.")
     end
@@ -53,25 +61,8 @@ function screen:update(ctx)
         prev.__ctx = ctx
     end
 
-    local online = Status.online
-    local lockdown = Status.lockdown
-    local reason = Status.lockdownReason
+
     local identifier = ctx and ctx.identifier or "Unknown"
-
-    if prev.online == online and
-        prev.lockdown == lockdown and
-        prev.reason == reason and
-        prev.identifier == identifier and
-        ctx and helpers.equals(ctx, prev.__ctx) then
-        log.debug("No changes detected, skipping screen update")
-        return -- No visual update needed
-    end
-
-    prev.online = online
-    prev.lockdown = lockdown
-    prev.reason = reason
-    prev.identifier = identifier
-
     local w, h = self.monitor.getSize()
     local cY = math.floor(h / 2)
 
@@ -88,20 +79,23 @@ function screen:update(ctx)
     self:writeCentered(3, "Nuclear  Facility", colors.orange)
     self:writeCentered(5, C.TYPE_NAME)
     self:writeCentered(6, "ID: " .. C.ID, colors.lightGray)
-    self:writeCentered(h - 2, "Shift-click keycard in card reader below", colors.gray)
+    self:writeCentered(h - 2, "Sneak-click keycard in card reader below", colors.gray)
     self:writeCentered(h - 1, "v v v v v", colors.gray)
 
-    if not online then
-        self:writeCentered(cY, "AIRLOCK OFFLINE", colors.red)
-    elseif lockdown then
-        self:fillLines(cY - 1, cY + 2, colors.red)
-        self:writeCentered(cY, "LOCKDOWN PROTOCOL ACTIVE", colors.white, colors.red)
-        if reason and reason ~= "" then
-            self:writeCentered(cY + 1, reason:sub(1, 51), colors.white, colors.red)
-        else
-            self:writeCentered(cY + 1, "Unknown reason", colors.white, colors.red)
+    local function handleLock(state)
+        if state == "locked" then
+            self:fillLines(cY - 1, cY + 2, colors.red)
+            self:writeCentered(cY, "LOCKDOWN PROTOCOL ACTIVE", colors.white, colors.red)
+            if StateMachine.reason and StateMachine.reason ~= "" then
+                self:writeCentered(cY + 1, StateMachine.reason:sub(1, 51), colors.white, colors.red)
+            else
+                self:writeCentered(cY + 1, "Unknown reason", colors.white, colors.red)
+            end
+        else -- "unlocked" or any other state
+            self:fillLines(cY - 1, cY + 2, colors.black)
         end
     end
+    handleLock(StateMachine.current_state)
 
     if ctx then
         if ctx.hasPresentedKeycardThisSession then
