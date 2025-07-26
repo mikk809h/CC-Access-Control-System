@@ -213,8 +213,8 @@ end
 transitions[StateEnum.OPEN .. "->" .. StateEnum.ENTRY] = function()
     return atomic({
         {
-            do_  = SM.context.closeEntryDoor,
-            undo = SM.context.openEntryDoor,
+            do_  = SM.context.openEntryDoor,
+            undo = SM.context.closeEntryDoor,
         },
         {
             do_  = SM.context.closeExitDoor,

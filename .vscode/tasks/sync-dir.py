@@ -20,13 +20,16 @@ def get_current_directory():
         print("Error: Current directory does not match expected pattern.")
         sys.exit(1)
 
-TARGET_DIR = r"C:\Users\Mikkel\AppData\Roaming\CraftOS-PC\computer\11"
+# TARGET_DIR = r"C:\Users\Mikkel\AppData\Roaming\CraftOS-PC\computer\11"
 TARGETS = {
     "control-server": [
         r"C:\Users\Mikkel\AppData\Roaming\CraftOS-PC\computer\12",
+        r"C:\Users\Mikkel\curseforge\minecraft\Instances\FTB Skies\saves\Reactor Templating\computercraft\computer\3",
     ],
     "airlock": [
-        r"C:\Users\Mikkel\AppData\Roaming\CraftOS-PC\computer\11"
+        r"C:\Users\Mikkel\AppData\Roaming\CraftOS-PC\computer\11",
+        r"C:\Users\Mikkel\curseforge\minecraft\Instances\FTB Skies\saves\Reactor Templating\computercraft\computer\2",
+        r"C:\Users\Mikkel\curseforge\minecraft\Instances\FTB Skies\saves\Reactor Templating\computercraft\computer\4",
     ],
 }
 
@@ -35,6 +38,8 @@ excluded_dirs = [
     '.git',
     '.install-cache',
     '.vscode',
+    "logs",
+    "data",
 ]
 
 excluded_files = [
@@ -48,7 +53,9 @@ def build_robocopy_args(source, target, mode="control-server"):
         source,
         target,
         "/COPY:DAT",
-        "/MIR"
+        "/MIR",
+        "/IS",
+        "/IT",
     ]
 
     if excluded_dirs:

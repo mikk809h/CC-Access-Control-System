@@ -12,6 +12,14 @@ local function onCommand(msg)
     log.info("Command received", textutils.serialize(msg))
     airlock.online = true
 
+    if not msg.transition then
+        return log.error("Invalid command message: Missing transition")
+    end
+
+    if msg.transition == "reboot" then
+        return os.reboot()
+    end
+
     StateMachine.enqueueTransition(msg.transition)
 
     ScreenHandler.update() -- Update all screens with the new status

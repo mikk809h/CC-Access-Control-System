@@ -13,6 +13,16 @@ local function onPingResponse(msg)
     airlock.id = msg._id or airlock.id
     airlock.online = true
 
+    if msg.error and msg.error == "Run BOOTUP sequence first" then
+        -- Send the bootup request.
+
+        Components.callComponent(C.COMPONENTS, "OTHER", "MODEM", "transmit", Ports.BOOTUP, Ports.BOOTUP_RESPONSE, {
+            __module = "airlock",
+            type = "bootup",
+            source = C.ID,
+            target = "ACS",
+        })
+    end
     ScreenHandler.update() -- Update all screens with the new status
 end
 

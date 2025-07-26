@@ -1,5 +1,3 @@
--- ui/sitemap_tab.lua
-
 local EventBus  = require("core.eventbus")
 local State     = require("control-server.state")
 local C         = require("control-server.config")
@@ -9,324 +7,303 @@ local debug     = require("core.debug")
 local constants = require("core.constants")
 
 return function(frame, openAirlockConfigCallback)
-    -- Add trend display to top
-    local drawMap = function() end
-    local airlockButtons = {}
+    -- Local state
     local selectedAirlocks = {}
+    local airlockButtonCache = {}
 
-    frame:addButton()
-        :setText("Unknown")
-        :setSize(9, 1)
-        :setPosition(2, 2)
-        :setBackground(colors.lightGray)
-        :setForeground(colors.black)
-        :onClick(function(_, button, x, y)
-            log.debug("Unknown button clicked")
-            debug.dump({ button = button, x = x, y = y })
-        end)
+    -- Utility Module
+    local UIUtils = {
+        yLine = function(offset)
+            return frame:getHeight() - offset
+        end,
 
-    frame:addButton()
-        :setText("Open")
-        :setSize(6, 1)
-        :setPosition(12, 2)
-        :setBackground(colors.yellow)
-        :setForeground(colors.black)
+        noAirlocksSelected = function()
+            return next(selectedAirlocks) == nil
+        end,
 
-    frame:addButton()
-        :setText("Closed")
-        :setSize(8, 1)
-        :setPosition(19, 2)
-        :setBackground(colors.orange)
-        :setForeground(colors.black)
+        separator = function(y)
+            local line = ("-"):rep(frame:getWidth() - 2)
+            return frame:addLabel():setText(line):setPosition(2, y):setForeground(colors.lightGray)
+        end,
 
-    frame:addButton()
-        :setText("Locked")
-        :setSize(8, 1)
-        :setPosition(28, 2)
-        :setBackground(colors.red)
-        :setForeground(colors.white)
-
-    frame:addButton()
-        :setText("Entry")
-        :setSize(7, 1)
-        :setPosition(37, 2)
-        :setBackground(colors.green)
-        :setForeground(colors.white)
-
-    frame:addButton()
-        :setText("Exit")
-        :setSize(6, 1)
-        :setPosition(45, 2)
-        :setBackground(colors.blue)
-        :setForeground(colors.white)
-
-    frame:addLabel()
-        :setText(("-"):rep(49))
-        :setPosition(2, 3)
-        :setForeground(colors.lightGray)
-
-    frame:addLabel()
-        :setText("RClick=config LClick=select")
-        :setPosition(2, 1)
-        :setForeground(colors.white)
-
-    frame:addButton()
-        :setText("All")
-        :setSize(5, 1)
-        :setPosition("{parent.width - 12}", 1)
-        :setBackground(colors.lightGray)
-        :setForeground(colors.black)
-        :onClick(function()
-            log.info("Selecting all airlocks")
-            selectedAirlocks = {}
-            local _airlocks = Airlocks:find()
-            for _, airlock in ipairs(_airlocks) do
-                selectedAirlocks[airlock._id] = true
-            end
-            drawMap()
-        end)
-    frame:addButton()
-        :setText("None")
-        :setSize(6, 1)
-        :setPosition("{parent.width - 6}", 1)
-        :setBackground(colors.lightGray)
-        :setForeground(colors.black)
-        :onClick(function()
-            log.info("Resetting airlock selections")
-            selectedAirlocks = {}
-            drawMap()
-        end)
-
-    drawMap = function()
-        -- log.info("Drawing map with airlocks")
-
-        -- Clear existing buttons
-        for _, btn in ipairs(airlockButtons) do
-            frame:removeChild(btn)
-        end
-        airlockButtons = {}
-
-        local _airlocks = Airlocks:find()
-
-        for i, airlock in ipairs(_airlocks) do
-            local bg_col = colors.lightGray
-            local fg_col = colors.black
-
-            if airlock.state == "open" then
-                bg_col = colors.yellow
-            elseif airlock.state == "closed" then
-                bg_col = colors.orange
-            elseif airlock.state == "locked" then
-                bg_col = colors.red
-                fg_col = colors.white
-            elseif airlock.state == "entry" then
-                bg_col = colors.green
-                fg_col = colors.white
-            elseif airlock.state == "exit" then
-                bg_col = colors.blue
-                fg_col = colors.white
-            end
-
-            local x = 2 + ((i - 1) % 3) * 10
-            local y = 4 + math.floor((i - 1) / 3) * 3
-            local label = airlock.name or ("Airlock " .. i)
-
-            -- Highlight if selected
-            local isSelected = selectedAirlocks[airlock._id]
-            if isSelected then
-                label = "*" .. label .. "*"
-            end
-
+        createButton = function(props)
             local btn = frame:addButton()
-                :setText(label)
-                :setPosition(x, y)
-                :setSize(8, 1)
-                :setBackground(bg_col)
-                :setForeground(fg_col)
-                :onClick(function(_, button, _x, _y)
-                    if button == 1 then
-                        -- Toggle selection
-                        if not selectedAirlocks[airlock._id] then
-                            log.info("Selecting airlock: " .. airlock._id)
-                            selectedAirlocks[airlock._id] = true
-                        else
-                            selectedAirlocks[airlock._id] = false
-                            log.info("Deselecting airlock: " .. airlock.name)
-                        end
-                        drawMap()
-                    elseif button == 2 then
-                        -- Open config
-                        log.debug("Configuring airlock: ", textutils.serialize(airlock))
-                        if openAirlockConfigCallback then
-                            openAirlockConfigCallback(airlock)
-                        end
+            btn:setText(props.text)
+                :setSize(props.size or (#props.text + 2), 1)
+                :setPosition(props.x, props.y)
+                :setBackground(props.bg or colors.lightGray)
+                :setForeground(props.fg or colors.black)
+
+            if props.onClick then
+                btn:onClick(props.onClick)
+            end
+
+            return btn
+        end
+    }
+
+    -- Header Rendering
+    local function drawHeader()
+        local headers = {
+            { text = "Unknown", size = 9, x = 2,  bg = colors.lightGray, fg = colors.black },
+            { text = "Open",    size = 6, x = 12, bg = colors.yellow,    fg = colors.black },
+            { text = "Closed",  size = 8, x = 19, bg = colors.orange,    fg = colors.black },
+            { text = "Locked",  size = 8, x = 28, bg = colors.red,       fg = colors.white },
+            { text = "Entry",   size = 7, x = 37, bg = colors.green,     fg = colors.white },
+            { text = "Exit",    size = 6, x = 45, bg = colors.blue,      fg = colors.white },
+        }
+
+        for _, h in ipairs(headers) do
+            UIUtils.createButton {
+                text = h.text, size = h.size, x = h.x, y = 2,
+                bg = h.bg, fg = h.fg,
+                onClick = function(_, button, x, y)
+                    if h.text == "Unknown" then
+                        log.debug("Unknown button clicked")
+                        debug.dump({ button = button, x = x, y = y })
                     end
-                end)
+                end
+            }
+        end
 
-            table.insert(airlockButtons, btn)
+        UIUtils.separator(3)
+        frame:addLabel():setText("RClick=config LClick=select"):setPosition(2, 1):setForeground(colors.white)
+
+        -- Select All / None
+        local actions = {
+            {
+                text = "All",
+                x = frame:getWidth() - 12,
+                action = function()
+                    selectedAirlocks = {}
+                    for _, airlock in ipairs(Airlocks:find()) do
+                        selectedAirlocks[airlock._id] = true
+                    end
+                    log.info("Selected all airlocks")
+                end
+            },
+
+            {
+                text = "None",
+                x = frame:getWidth() - 6,
+                action = function()
+                    selectedAirlocks = {}
+                    log.info("Cleared all selections")
+                end
+            }
+        }
+
+        for _, a in ipairs(actions) do
+            UIUtils.createButton {
+                text = a.text, x = a.x, y = 1,
+                onClick = function()
+                    a.action()
+                    drawMap()
+                end
+            }
         end
     end
 
-    -- Command Button
+    -- Command Section
     local function commandSelectedAirlocks(state)
-        local selected = {}
-        for id, isSelected in pairs(selectedAirlocks) do
-            if isSelected then
-                table.insert(selected, id)
-            end
-        end
-        log.info("Commanding selected airlocks: " .. textutils.serialize(selected))
-        if #selected == 0 then
-            log.warn("No airlocks selected for command")
-            return
+        local targets = {}
+        for id, selected in pairs(selectedAirlocks) do
+            if selected then table.insert(targets, id) end
         end
 
-        if State.Modem then
-            State.Modem.transmit(constants.Ports.COMMAND, constants.Ports.COMMAND_RESPONSE, {
-                __module = "airlock-cs",
-                type = "command",
-                source = C.ID,
-                target = selected,
-                transition = state,
-            })
-        else
-            log.error("Modem not initialized, cannot send command")
+        if #targets == 0 then
+            return log.warn("No airlocks selected for command")
+        end
+
+        if not State.Modem then
+            return log.error("Modem not initialized")
+        end
+
+        State.Modem.transmit(constants.Ports.COMMAND, constants.Ports.COMMAND_RESPONSE, {
+            __module = "airlock-cs",
+            type = "command",
+            source = C.ID,
+            target = targets,
+            transition = state,
+        })
+
+        log.info("Commanded airlocks: " .. textutils.serialize(targets))
+    end
+
+    local function renderCommandSection()
+        UIUtils.separator(UIUtils.yLine(2))
+
+        local sections = {
+            {
+                label = "Lockdown",
+                x = 7,
+                buttons = {
+                    { text = "Enable",  x = 2,  bg = colors.red,    state = "locked" },
+                    { text = "Disable", x = 11, bg = colors.orange, state = "closed" },
+                }
+            },
+            {
+                label = "General",
+                x = 23,
+                buttons = {
+                    { text = "Entry", x = 21, bg = colors.green, state = "entry" },
+                    { text = "Exit",  x = 29, bg = colors.blue,  state = "exit" },
+                }
+            },
+            {
+                label = "Force",
+                x = 40,
+                buttons = {
+                    { text = "Open",  x = 36, bg = colors.yellow, state = "open" },
+                    { text = "Close", x = 43, bg = colors.orange, state = "closed" },
+                }
+            },
+        }
+
+        for _, section in ipairs(sections) do
+            frame:addLabel():setText(section.label):setPosition(section.x, UIUtils.yLine(0)):setForeground(colors.white)
+
+            for _, btn in ipairs(section.buttons) do
+                UIUtils.createButton {
+                    text = btn.text, x = btn.x, y = UIUtils.yLine(1), bg = btn.bg,
+                    onClick = function()
+                        if UIUtils.noAirlocksSelected() then
+                            return log.warn("No airlocks selected for command")
+                        end
+                        commandSelectedAirlocks(btn.state)
+                    end
+                }
+            end
+        end
+
+        UIUtils.createButton {
+            text = "R", x = frame:getWidth() - 1, y = UIUtils.yLine(0),
+            bg = colors.lightGray,
+            onClick = function()
+                if UIUtils.noAirlocksSelected() then
+                    return log.warn("No airlocks selected for command")
+                end
+                commandSelectedAirlocks("reboot")
+            end
+        }
+    end
+    local function categorizeAirlocks(airlocks)
+        local segments = {
+            A1 = {}, -- Reactor Containment
+            A2 = {}, -- Inner Perimeter
+            A3 = {}, -- Outer Perimeter
+            Unknown = {}
+        }
+
+        for _, airlock in ipairs(airlocks) do
+            local name = airlock.name or ""
+            local zone = name:match("^(A[1-3])") or "Unknown"
+            table.insert(segments[zone], airlock)
+        end
+
+        return segments
+    end
+    function drawMap()
+        local airlocks = Airlocks:find()
+        local segments = categorizeAirlocks(airlocks)
+        local validIDs = {}
+
+        local zoneOrder = { "A3", "A2", "A1" }
+        local columnX = {
+            A3 = 2,
+            A2 = math.floor(frame:getWidth() / 3),
+            A1 = math.floor(2 * frame:getWidth() / 3),
+        }
+
+        local zoneLabels = {
+            A3 = "A3 - Outer",
+            A2 = "A2 - Inner",
+            A1 = "A1 - Reactor",
+        }
+
+        local maxRows = 0
+
+        -- Render zone headers
+        for _, zone in ipairs(zoneOrder) do
+            local x = columnX[zone]
+            frame:addLabel()
+                :setText(zoneLabels[zone])
+                :setPosition(x, 4)
+                :setForeground(colors.white)
+        end
+
+        -- Render airlocks under each zone, vertically
+        for _, zone in ipairs(zoneOrder) do
+            local list = segments[zone]
+            local x = columnX[zone]
+            for i, airlock in ipairs(list) do
+                local y = 5 + i -- 1-based vertical stacking
+                validIDs[airlock._id] = true
+
+                local label = airlock.name or ("Airlock " .. i)
+                if selectedAirlocks[airlock._id] then
+                    label = "*" .. label .. "*"
+                end
+
+                local bg, fg = colors.lightGray, colors.black
+                if airlock.state == "open" then
+                    bg = colors.yellow
+                elseif airlock.state == "closed" then
+                    bg = colors.orange
+                elseif airlock.state == "locked" then
+                    bg, fg = colors.red, colors.white
+                elseif airlock.state == "entry" then
+                    bg, fg = colors.green, colors.white
+                elseif airlock.state == "exit" then
+                    bg, fg = colors.blue, colors.white
+                end
+
+                local btn = airlockButtonCache[airlock._id]
+                if btn then
+                    btn:setText(label)
+                        :setPosition(x, y)
+                        :setBackground(bg)
+                        :setForeground(fg)
+                else
+                    btn = frame:addButton()
+                        :setText(label):setSize(12, 1)
+                        :setPosition(x, y)
+                        :setBackground(bg)
+                        :setForeground(fg)
+                        :onClick(function(_, button)
+                            if button == 1 then
+                                selectedAirlocks[airlock._id] = not selectedAirlocks[airlock._id]
+                                log.info((selectedAirlocks[airlock._id] and "Selected" or "Deselected") ..
+                                    " airlock: " .. airlock._id)
+                                drawMap()
+                            elseif button == 2 and openAirlockConfigCallback then
+                                openAirlockConfigCallback(airlock)
+                            end
+                        end)
+                    airlockButtonCache[airlock._id] = btn
+                end
+
+                if i > maxRows then maxRows = i end
+            end
+        end
+
+        -- Remove stale buttons
+        for id, btn in pairs(airlockButtonCache) do
+            if not validIDs[id] then
+                frame:removeChild(btn)
+                airlockButtonCache[id] = nil
+            end
         end
     end
-    -- Utility functions
-    local function yLine(offset)
-        return frame:getHeight() - offset
-    end
 
-    local function noAirlocksSelected()
-        return next(selectedAirlocks) == nil
-    end
-
-    local function makeCommandButton(props)
-        frame:addButton()
-            :setText(props.text)
-            :setSize(props.width or (#props.text + 2), 1)
-            :setPosition(props.x, yLine(1))
-            :setBackground(props.bg or colors.lightGray)
-            :setForeground(props.fg or colors.black)
-            :onClick(props.onClick)
-    end
-
-    -- Divider line
-    frame:addLabel()
-        :setText(("-"):rep(49))
-        :setPosition(2, yLine(3))
-        :setForeground(colors.lightGray)
-
-    -- Section Headers
-    local sectionHeaders = {
-        { text = "Lockdown", x = 7 },
-        { text = "General",  x = 23 },
-        { text = "Force",    x = 40 }
-    }
-
-    for _, header in ipairs(sectionHeaders) do
-        frame:addLabel()
-            :setText(header.text)
-            :setPosition(header.x, yLine(2))
-            :setForeground(colors.white)
-    end
-
-    -- Lockdown Section Buttons
-    local lockdownButtons = {
-        {
-            text = "Enable",
-            x = 2,
-            bg = colors.red,
-            onClick = function()
-                if noAirlocksSelected() then
-                    log.warn("No airlocks selected for command")
-                    return
-                end
-                -- Now run Lockdown on selected airlocks
-                commandSelectedAirlocks("locked")
-            end
-        },
-        {
-            text = "Disable",
-            x = 11,
-            bg = colors.orange,
-            onClick = function()
-                if noAirlocksSelected() then
-                    log.warn("No airlocks selected for command")
-                    return
-                end
-                commandSelectedAirlocks("closed")
-            end
-        },
-    }
-
-    -- General Section Buttons
-    local generalButtons = {
-        {
-            text = "Entry",
-            x = 21,
-            bg = colors.green,
-            onClick = function()
-                if noAirlocksSelected() then
-                    log.warn("No airlocks selected for command")
-                    return
-                end
-                commandSelectedAirlocks("entry")
-            end
-        },
-        {
-            text = "Exit",
-            x = 29,
-            bg = colors.blue,
-            onClick = function()
-                if noAirlocksSelected() then
-                    log.warn("No airlocks selected for command")
-                    return
-                end
-                commandSelectedAirlocks("exit")
-            end
-        },
-    }
-
-    -- Open/Close Control Buttons
-    local controlButtons = {
-        {
-            text = "Open",
-            x = 36,
-            bg = colors.yellow,
-            onClick = function()
-                if noAirlocksSelected() then
-                    log.warn("No airlocks selected for command")
-                    return
-                end
-                commandSelectedAirlocks("open")
-            end
-        },
-        {
-            text = "Close",
-            x = 43,
-            bg = colors.orange,
-            onClick = function()
-                if noAirlocksSelected() then
-                    log.warn("No airlocks selected for command")
-                    return
-                end
-                commandSelectedAirlocks("closed")
-            end
-        },
-    }
-
-    -- Render All Button Groups
-    for _, btn in ipairs(lockdownButtons) do makeCommandButton(btn) end
-    for _, btn in ipairs(generalButtons) do makeCommandButton(btn) end
-    for _, btn in ipairs(controlButtons) do makeCommandButton(btn) end
-
-
+    -- Bind Events
     Airlocks:on("new", drawMap)
     Airlocks:on("update", drawMap)
     Airlocks:on("delete", drawMap)
 
+    -- Initial UI Render
+    drawHeader()
+    renderCommandSection()
     drawMap()
 
     return {
