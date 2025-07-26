@@ -203,6 +203,70 @@ return function(frame, openAirlockConfigCallback)
 
         return segments
     end
+    -- Render "Others" Drawer
+    local function renderOthersDrawer(others, startY, validIDs)
+        if not others or type(others) ~= "table" then
+            log.warn("Invalid 'others' data for rendering drawer", textutils.serialize(others))
+            return
+        end
+        if #others == 0 then return end
+
+        local drawerY = startY + 3
+        local drawerX = 2
+        frame:addLabel()
+            :setText("Others / Non-Configured")
+            :setPosition(drawerX, drawerY)
+            :setForeground(colors.white)
+
+        for i, airlock in ipairs(others) do
+            local y = drawerY + i
+            validIDs[airlock._id] = true
+            log.debug("Rendering airlock:", airlock._id, "at", drawerX, y)
+            local label = airlock.name or ("Airlock " .. i)
+            if selectedAirlocks[airlock._id] then
+                label = "*" .. label .. "*"
+            end
+
+            local bg, fg = colors.lightGray, colors.black
+            if airlock.state == "open" then
+                bg = colors.yellow
+            elseif airlock.state == "closed" then
+                bg = colors.orange
+            elseif airlock.state == "locked" then
+                bg, fg = colors.red, colors.white
+            elseif airlock.state == "entry" then
+                bg, fg = colors.green, colors.white
+            elseif airlock.state == "exit" then
+                bg, fg = colors.blue, colors.white
+            end
+
+            local btn = airlockButtonCache[airlock._id]
+            if btn then
+                btn:setText(label)
+                    :setPosition(drawerX, y)
+                    :setBackground(bg)
+                    :setForeground(fg)
+            else
+                btn = frame:addButton()
+                    :setText(label):setSize(20, 1)
+                    :setPosition(drawerX, y)
+                    :setBackground(bg)
+                    :setForeground(fg)
+                    :onClick(function(_, button)
+                        if button == 1 then
+                            selectedAirlocks[airlock._id] = not selectedAirlocks[airlock._id]
+                            log.info((selectedAirlocks[airlock._id] and "Selected" or "Deselected") ..
+                                " airlock: " .. airlock._id)
+                            drawMap()
+                        elseif button == 2 and openAirlockConfigCallback then
+                            openAirlockConfigCallback(airlock)
+                        end
+                    end)
+                airlockButtonCache[airlock._id] = btn
+            end
+        end
+    end
+
     function drawMap()
         local airlocks = Airlocks:find()
         local segments = categorizeAirlocks(airlocks)
@@ -286,6 +350,7 @@ return function(frame, openAirlockConfigCallback)
                 if i > maxRows then maxRows = i end
             end
         end
+        renderOthersDrawer(segments.Unknown, 5 + maxRows + 2, validIDs)
 
         -- Remove stale buttons
         for id, btn in pairs(airlockButtonCache) do

@@ -24,10 +24,12 @@ def get_current_directory():
 TARGETS = {
     "control-server": [
         r"C:\Users\Mikkel\AppData\Roaming\CraftOS-PC\computer\12",
+        # r"C:\Users\Mikkel\AppData\Roaming\CraftOS-PC\computer\12",
         r"C:\Users\Mikkel\curseforge\minecraft\Instances\FTB Skies\saves\Reactor Templating\computercraft\computer\3",
     ],
     "airlock": [
         r"C:\Users\Mikkel\AppData\Roaming\CraftOS-PC\computer\11",
+        r"C:\Users\Mikkel\AppData\Roaming\CraftOS-PC\computer\2",
         r"C:\Users\Mikkel\curseforge\minecraft\Instances\FTB Skies\saves\Reactor Templating\computercraft\computer\2",
         r"C:\Users\Mikkel\curseforge\minecraft\Instances\FTB Skies\saves\Reactor Templating\computercraft\computer\4",
     ],
